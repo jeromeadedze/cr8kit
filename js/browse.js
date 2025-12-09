@@ -162,7 +162,7 @@ function createEquipmentCard(item) {
   const card = document.createElement("div");
   card.className = "equipment-card";
   card.onclick = () =>
-    (window.location.href = `equipment-details.php?id=${item.id}`);
+    (window.location.href = `equipment-details.html?id=${item.id}`);
 
   card.innerHTML = `
         <div style="position: relative;">
