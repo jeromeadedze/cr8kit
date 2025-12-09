@@ -1,0 +1,162 @@
+<?php
+/**
+ * Home/Browse Equipment Page
+ * Cr8Kit - Ghana Creative Rentals Platform
+ */
+
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browse Equipment - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+    <?php include __DIR__ . '/includes/navbar.php'; ?>
+    
+    <div class="main-content">
+        <!-- Sidebar Filters -->
+        <aside class="sidebar">
+            <div class="filter-card">
+                <div class="filter-header">
+                    <h3 class="filter-title">Filter Results</h3>
+                    <button class="btn-clear" onclick="clearFilters()">Clear All</button>
+                </div>
+                
+                <!-- Category Filter -->
+                <div class="filter-section">
+                    <label class="filter-label">Category</label>
+                    <ul class="category-list">
+                        <li class="category-item">
+                            <label>
+                                <input type="checkbox" class="category-checkbox" value="Cameras" checked onchange="applyFilters()">
+                                <span>Cameras</span>
+                            </label>
+                            <span class="category-count">128</span>
+                        </li>
+                        <li class="category-item">
+                            <label>
+                                <input type="checkbox" class="category-checkbox" value="Lighting" onchange="applyFilters()">
+                                <span>Lighting</span>
+                            </label>
+                            <span class="category-count">45</span>
+                        </li>
+                        <li class="category-item">
+                            <label>
+                                <input type="checkbox" class="category-checkbox" value="Audio" onchange="applyFilters()">
+                                <span>Audio</span>
+                            </label>
+                            <span class="category-count">32</span>
+                        </li>
+                        <li class="category-item">
+                            <label>
+                                <input type="checkbox" class="category-checkbox" value="Drones" onchange="applyFilters()">
+                                <span>Drones</span>
+                            </label>
+                            <span class="category-count">15</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Price Range -->
+                <div class="filter-section">
+                    <label class="filter-label">Price Range (GHS)</label>
+                    <div class="price-range-container">
+                        <div class="price-display">
+                            <span>Min GHS <span id="minPrice">50</span></span>
+                            <span>Max GHS <span id="maxPrice">1200</span></span>
+                        </div>
+                        <input type="range" class="range-slider" min="50" max="1200" value="50" id="minPriceSlider" oninput="updatePriceRange()">
+                        <input type="range" class="range-slider" min="50" max="1200" value="1200" id="maxPriceSlider" oninput="updatePriceRange()">
+                    </div>
+                </div>
+                
+                <!-- Location Filter -->
+                <div class="filter-section">
+                    <label class="filter-label">Location</label>
+                    <select class="location-select" id="locationFilter" onchange="applyFilters()">
+                        <option value="">All Locations</option>
+                        <option value="Accra">Accra</option>
+                        <option value="Kumasi">Kumasi</option>
+                        <option value="Tema">Tema</option>
+                        <option value="East Legon">East Legon</option>
+                        <option value="Osu">Osu</option>
+                        <option value="Cantonments">Cantonments</option>
+                        <option value="Spintex">Spintex</option>
+                    </select>
+                </div>
+                
+                <!-- Availability Filter -->
+                <div class="filter-section">
+                    <label class="filter-label">Availability</label>
+                    <div class="date-inputs">
+                        <input type="date" class="date-input" id="startDate" onchange="applyFilters()">
+                        <input type="date" class="date-input" id="endDate" onchange="applyFilters()">
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Welcome Banner -->
+            <?php if ($isLoggedIn && $currentUser): ?>
+            <div class="welcome-banner">
+                <div class="banner-content">
+                    <span class="verified-badge">Verified Member</span>
+                    <h2 class="banner-title">Welcome Back, <?php echo htmlspecialchars(explode(' ', $currentUser['full_name'])[0]); ?>.</h2>
+                    <p class="banner-subtitle">Ready for your next shoot? Explore the latest gear added to the community this week.</p>
+                </div>
+                <div class="banner-image">
+                    <i class="fas fa-camera" style="font-size: 48px;"></i>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Featured Equipment Section -->
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Featured Equipment</h2>
+                    <p class="section-subtitle">Found <span id="equipmentCount">342</span> items available near Accra.</p>
+                </div>
+            </div>
+            
+            <div class="section-header">
+                <div class="filter-tags" id="activeFilters">
+                    <span class="filter-tag">
+                        Category: Cameras
+                        <span class="filter-tag-close" onclick="removeFilter('category', 'Cameras')">×</span>
+                    </span>
+                    <button class="btn-clear" onclick="clearFilters()">Clear All</button>
+                </div>
+                <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+                    <option value="recommended">Sort by: Recommended</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="newest">Newest First</option>
+                </select>
+            </div>
+            
+            <!-- Equipment Grid -->
+            <div class="equipment-grid" id="equipmentGrid">
+                <!-- Equipment cards will be loaded here via JavaScript -->
+            </div>
+            
+            <button class="btn-load-more" onclick="loadMoreEquipment()">
+                <i class="fas fa-sync-alt"></i> Load More Equipment
+            </button>
+        </main>
+    </div>
+    
+    <script src="js/browse.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Bookings - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="browse.html" class="logo-nav">
+                <span>Cr8Kit</span>
+            </a>
+            
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    placeholder="Search equipment"
+                />
+                <i class="fas fa-search search-icon"></i>
+            </div>
+        </div>
+        
+        <div class="navbar-right">
+            <ul class="nav-links">
+                <li><a href="browse.html" class="nav-link">Browse Equipment</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
+            </ul>
+            
+            <div class="nav-icons">
+                <button class="icon-btn" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge"></span>
+                </button>
+            </div>
+            
+            <img 
+                src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=40" 
+                alt="User Avatar" 
+                class="user-avatar"
+            />
+        </div>
+    </nav>
+    
+    <div class="main-content" style="max-width: 1200px; margin: 0 auto; padding: var(--spacing-lg);">
+        <!-- Page Header -->
+        <div style="margin-bottom: var(--spacing-xl);">
+            <h1 style="font-size: 32px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--spacing-xs);">
+                My Bookings
+            </h1>
+            <p style="color: var(--text-gray);">
+                Manage your current rentals, track requests, and view your history.
+            </p>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid" style="margin-bottom: var(--spacing-lg);">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-home"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Active Rentals</div>
+                    <div class="stat-value">2</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Pending Requests</div>
+                    <div class="stat-value">1</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Spent</div>
+                    <div class="stat-value">GHS 1,450.00</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filter Tabs -->
+        <div class="tabs-nav">
+            <a href="#" class="tab-link active" onclick="filterBookings('all'); return false;">All</a>
+            <a href="#" class="tab-link" onclick="filterBookings('active'); return false;">Active</a>
+            <a href="#" class="tab-link" onclick="filterBookings('pending'); return false;">Pending</a>
+            <a href="#" class="tab-link" onclick="filterBookings('completed'); return false;">Completed</a>
+            <a href="#" class="tab-link" onclick="filterBookings('cancelled'); return false;">Cancelled</a>
+        </div>
+        
+        <!-- Bookings List -->
+        <div class="booking-list" id="bookingList">
+            <!-- Booking 1: Active -->
+            <div class="booking-card" data-status="active">
+                <img 
+                    src="https://via.placeholder.com/120?text=Sony+A7III" 
+                    alt="Sony A7III + 24-70mm GM Lens"
+                    class="booking-image"
+                />
+                <div class="booking-content">
+                    <div class="booking-info">
+                        <div class="booking-status">
+                            <span class="status-dot active"></span>
+                            <span style="text-transform: capitalize; font-weight: 500;">Active</span>
+                        </div>
+                        <div class="booking-id">ID: #BK-4921</div>
+                        <h3 class="booking-title">Sony A7III + 24-70mm GM Lens</h3>
+                        <p class="booking-description">Full frame mirrorless kit for professional video.</p>
+                        <div class="booking-meta">
+                            <span><i class="fas fa-calendar"></i> Oct 12 - Oct 14, 2023 (3 days)</span>
+                            <span><i class="fas fa-user"></i> Kwame Mensah</span>
+                        </div>
+                    </div>
+                    <div class="booking-actions">
+                        <div class="booking-price">
+                            <div class="price-amount">GHS 450.00</div>
+                            <div class="price-status paid">Paid</div>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-xs);">
+                            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px;">
+                                Return Equipment
+                            </button>
+                            <button class="icon-btn" style="font-size: 16px;">
+                                <i class="fas fa-comment"></i>
+                            </button>
+                            <button class="icon-btn" style="font-size: 16px;">
+                                <i class="fas fa-file-invoice"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Booking 2: Pending -->
+            <div class="booking-card" data-status="pending">
+                <img 
+                    src="https://via.placeholder.com/120?text=Aputure+300d" 
+                    alt="Aputure 300d II Light Storm"
+                    class="booking-image"
+                />
+                <div class="booking-content">
+                    <div class="booking-info">
+                        <div class="booking-status">
+                            <span class="status-dot pending"></span>
+                            <span style="text-transform: capitalize; font-weight: 500;">Pending Approval</span>
+                        </div>
+                        <div class="booking-id">ID: #BK-4988</div>
+                        <h3 class="booking-title">Aputure 300d II Light Storm</h3>
+                        <p class="booking-description">Powerful LED point source light.</p>
+                        <div class="booking-meta">
+                            <span><i class="fas fa-calendar"></i> Nov 02 - Nov 03, 2023 (1 day)</span>
+                            <span><i class="fas fa-user"></i> Sarah Osei</span>
+                        </div>
+                    </div>
+                    <div class="booking-actions">
+                        <div class="booking-price">
+                            <div class="price-amount">GHS 250.00</div>
+                            <div class="price-status pending">Awaiting Confirmation</div>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-xs);">
+                            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px; background: var(--text-gray);">
+                                Cancel Request
+                            </button>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> Free cancellation
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Booking 3: Active -->
+            <div class="booking-card" data-status="active">
+                <img 
+                    src="https://via.placeholder.com/120?text=DJI+Mavic+3" 
+                    alt="DJI Mavic 3 Cine"
+                    class="booking-image"
+                />
+                <div class="booking-content">
+                    <div class="booking-info">
+                        <div class="booking-status">
+                            <span class="status-dot active"></span>
+                            <span style="text-transform: capitalize; font-weight: 500;">Active</span>
+                        </div>
+                        <div class="booking-id">ID: #BK-4899</div>
+                        <h3 class="booking-title">DJI Mavic 3 Cine</h3>
+                        <p class="booking-description">Professional aerial drone with Hasselblad camera.</p>
+                        <div class="booking-meta">
+                            <span><i class="fas fa-calendar"></i> Oct 14 - Oct 16, 2023 (2 days)</span>
+                            <span><i class="fas fa-user"></i> Emmanuel K.</span>
+                        </div>
+                    </div>
+                    <div class="booking-actions">
+                        <div class="booking-price">
+                            <div class="price-amount">GHS 1,000.00</div>
+                            <div class="price-status paid">Paid</div>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-xs);">
+                            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px;">
+                                View Details
+                            </button>
+                            <button class="icon-btn" style="font-size: 16px;">
+                                <i class="fas fa-comment"></i>
+                            </button>
+                            <button class="icon-btn" style="font-size: 16px;">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Booking 4: Completed -->
+            <div class="booking-card" data-status="completed">
+                <img 
+                    src="https://via.placeholder.com/120?text=Rode+NTG3" 
+                    alt="Rode NTG3 Shotgun Mic"
+                    class="booking-image"
+                />
+                <div class="booking-content">
+                    <div class="booking-info">
+                        <div class="booking-status">
+                            <span class="status-dot completed"></span>
+                            <span style="text-transform: capitalize; font-weight: 500;">Completed</span>
+                        </div>
+                        <div class="booking-id">ID: #BK-4501</div>
+                        <h3 class="booking-title">Rode NTG3 Shotgun Mic</h3>
+                        <p class="booking-description">Super-cardioid shotgun microphone.</p>
+                        <div class="booking-meta">
+                            <span><i class="fas fa-calendar"></i> Sep 10 - Sep 12, 2023</span>
+                        </div>
+                    </div>
+                    <div class="booking-actions">
+                        <div class="booking-price">
+                            <div class="price-amount">GHS 200.00</div>
+                            <div class="price-status paid">Paid</div>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-xs);">
+                            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px; background: var(--text-gray);">
+                                Book Again
+                            </button>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
+                            <a href="#" style="color: var(--primary-orange); text-decoration: none;">Leave a Review</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="btn-load-more" onclick="loadOlderBookings()">
+            Load older bookings
+        </button>
+    </div>
+    
+    <script>
+        function filterBookings(status) {
+            const cards = document.querySelectorAll('.booking-card');
+            const tabs = document.querySelectorAll('.tab-link');
+            
+            // Update active tab
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Filter cards
+            cards.forEach(card => {
+                if (status === 'all' || card.dataset.status === status) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        function loadOlderBookings() {
+            console.log('Loading older bookings...');
+            alert('This would load more bookings in a real application.');
+        }
+    </script>
+    <script src="js/bookings.js"></script>
+</body>
+</html>
+

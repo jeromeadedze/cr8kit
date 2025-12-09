@@ -275,9 +275,8 @@ function initSignInForm() {
             // Show success message
             alert("Login successful! Welcome back, " + data.data.name + "!");
 
-            // Redirect to dashboard or home page
-            // window.location.href = 'dashboard.php';
-            console.log("Login successful:", data.data);
+            // Redirect to dashboard
+            window.location.href = "dashboard.html";
           } else {
             // Handle errors
             if (data.data && data.data.errors) {
@@ -545,9 +544,8 @@ function initSignUpForm() {
                 "!"
             );
 
-            // Redirect to dashboard or home page
-            // window.location.href = 'dashboard.php';
-            console.log("Signup successful:", data.data);
+            // Redirect to dashboard
+            window.location.href = "dashboard.html";
           } else {
             // Handle errors
             if (data.data && data.data.errors) {
