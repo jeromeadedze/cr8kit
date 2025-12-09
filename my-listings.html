@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Listings - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="navbar-left">
+        <a href="browse.html" class="logo-nav">
+          <span>Cr8Kit</span>
+        </a>
+
+        <div class="search-container">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search cameras, lenses, lighting..."
+          />
+          <i class="fas fa-search search-icon"></i>
+        </div>
+      </div>
+
+      <div class="navbar-right">
+        <ul class="nav-links">
+          <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
+          <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
+        </ul>
+
+        <a href="list-item.html" class="btn-list-item">List Item</a>
+
+        <div class="nav-icons">
+          <button class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge"></span>
+          </button>
+          <button class="icon-btn" title="Messages">
+            <i class="fas fa-comment"></i>
+          </button>
+          <button class="icon-btn" title="Help">
+            <i class="fas fa-question-circle"></i>
+          </button>
+        </div>
+
+        <a href="profile.html">
+          <img
+            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=40"
+            alt="User Avatar"
+            class="user-avatar"
+          />
+        </a>
+      </div>
+    </nav>
+
+    <div class="page-container">
+      <!-- Page Header -->
+      <div class="owner-page-header">
+        <div>
+          <h1 class="owner-page-title">My Listings</h1>
+          <p class="owner-page-subtitle">
+            Manage your inventory, update availability, and track your equipment
+            status.
+          </p>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="owner-summary-cards">
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
+            <i class="fas fa-folder"></i>
+          </div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Total Listings</div>
+            <div class="owner-summary-value">12</div>
+            <div class="owner-summary-change positive">+2 this month</div>
+          </div>
+        </div>
+
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
+            <i class="fas fa-handshake"></i>
+          </div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Currently Rented</div>
+            <div class="owner-summary-value">4</div>
+          </div>
+        </div>
+
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
+            <i class="fas fa-wallet"></i>
+          </div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Total Earnings</div>
+            <div class="owner-summary-value">GH₵ 4,200</div>
+            <div class="owner-summary-change positive">+15%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="listings-controls" style="margin-bottom: var(--spacing-lg)">
+        <div style="flex: 1"></div>
+        <div class="listings-filters">
+          <button
+            class="filter-btn active"
+            data-filter="all"
+            onclick="applyFilter('all'); return false;"
+          >
+            All Items
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="active"
+            onclick="applyFilter('active'); return false;"
+          >
+            Active
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="booked"
+            onclick="applyFilter('booked'); return false;"
+          >
+            Booked
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="drafts"
+            onclick="applyFilter('drafts'); return false;"
+          >
+            Drafts
+          </button>
+        </div>
+      </div>
+
+      <!-- Equipment Listings List -->
+      <div class="booking-list" id="listingsGrid">
+        <!-- Listing Card 1 -->
+        <div class="booking-card" data-status="available">
+          <img
+            src="https://via.placeholder.com/120?text=Sony+A7III"
+            alt="Sony A7III Kit"
+            class="booking-image"
+          />
+          <div class="booking-content">
+            <div class="booking-info">
+              <div class="booking-status">
+                <span class="status-dot active"></span>
+                <span style="text-transform: capitalize; font-weight: 500"
+                  >Available</span
+                >
+              </div>
+              <div class="booking-id">ID: #LT-4921</div>
+              <h3 class="booking-title">Sony A7III Kit</h3>
+              <p class="booking-description">
+                Full frame mirrorless camera kit with 24-70mm lens for
+                professional photography and video.
+              </p>
+              <div class="booking-meta">
+                <span><i class="fas fa-tag"></i> Cameras</span>
+                <span><i class="fas fa-calendar"></i> Listed: Oct 1, 2023</span>
+              </div>
+            </div>
+            <div class="booking-actions">
+              <div class="booking-price">
+                <div class="price-amount">
+                  GH₵ 350
+                  <span
+                    style="
+                      font-size: 14px;
+                      font-weight: 400;
+                      color: var(--text-gray);
+                    "
+                    >/ day</span
+                  >
+                </div>
+                <div class="price-status paid">Active</div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: var(--spacing-xs);
+                  align-items: center;
+                "
+              >
+                <label
+                  class="listing-toggle-switch"
+                  onclick="event.stopPropagation(); event.preventDefault();"
+                  style="margin: 0"
+                >
+                  <input
+                    type="checkbox"
+                    checked
+                    onchange="toggleListing(this, event)"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+                <a
+                  href="equipment-details.html"
+                  class="icon-btn"
+                  style="font-size: 16px; text-decoration: none"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button class="icon-btn" style="font-size: 16px">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Listing Card 2 -->
+        <div class="booking-card" data-status="rented">
+          <img
+            src="https://via.placeholder.com/120?text=DJI+Ronin+S"
+            alt="DJI Ronin S"
+            class="booking-image"
+          />
+          <div class="booking-content">
+            <div class="booking-info">
+              <div class="booking-status">
+                <span class="status-dot pending"></span>
+                <span style="text-transform: capitalize; font-weight: 500"
+                  >Rented</span
+                >
+              </div>
+              <div class="booking-id">ID: #LT-4922</div>
+              <h3 class="booking-title">DJI Ronin S</h3>
+              <p class="booking-description">
+                Professional 3-axis gimbal stabilizer for smooth camera
+                movements.
+              </p>
+              <div class="booking-meta">
+                <span><i class="fas fa-tag"></i> Stabilizers</span>
+                <span><i class="fas fa-calendar"></i> Returns in 2 days</span>
+              </div>
+            </div>
+            <div class="booking-actions">
+              <div class="booking-price">
+                <div class="price-amount">
+                  GH₵ 150
+                  <span
+                    style="
+                      font-size: 14px;
+                      font-weight: 400;
+                      color: var(--text-gray);
+                    "
+                    >/ day</span
+                  >
+                </div>
+                <div class="price-status pending">Rented</div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: var(--spacing-xs);
+                  align-items: center;
+                "
+              >
+                <a
+                  href="equipment-details.html"
+                  class="icon-btn"
+                  style="font-size: 16px; text-decoration: none"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button class="icon-btn" style="font-size: 16px">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Listing Card 3 -->
+        <div class="booking-card" data-status="available">
+          <img
+            src="https://via.placeholder.com/120?text=Canon+24-70mm"
+            alt="Canon 24-70mm f/2.8"
+            class="booking-image"
+          />
+          <div class="booking-content">
+            <div class="booking-info">
+              <div class="booking-status">
+                <span class="status-dot active"></span>
+                <span style="text-transform: capitalize; font-weight: 500"
+                  >Available</span
+                >
+              </div>
+              <div class="booking-id">ID: #LT-4923</div>
+              <h3 class="booking-title">Canon 24-70mm f/2.8</h3>
+              <p class="booking-description">
+                Professional zoom lens with constant f/2.8 aperture for low
+                light photography.
+              </p>
+              <div class="booking-meta">
+                <span><i class="fas fa-tag"></i> Lenses</span>
+                <span
+                  ><i class="fas fa-calendar"></i> Listed: Sep 25, 2023</span
+                >
+              </div>
+            </div>
+            <div class="booking-actions">
+              <div class="booking-price">
+                <div class="price-amount">
+                  GH₵ 200
+                  <span
+                    style="
+                      font-size: 14px;
+                      font-weight: 400;
+                      color: var(--text-gray);
+                    "
+                    >/ day</span
+                  >
+                </div>
+                <div class="price-status paid">Active</div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: var(--spacing-xs);
+                  align-items: center;
+                "
+              >
+                <label
+                  class="listing-toggle-switch"
+                  onclick="event.stopPropagation(); event.preventDefault();"
+                  style="margin: 0"
+                >
+                  <input
+                    type="checkbox"
+                    checked
+                    onchange="toggleListing(this, event)"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+                <a
+                  href="equipment-details.html"
+                  class="icon-btn"
+                  style="font-size: 16px; text-decoration: none"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button class="icon-btn" style="font-size: 16px">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Listing Card 4 -->
+        <div class="booking-card" data-status="inactive">
+          <img
+            src="https://via.placeholder.com/120?text=Godox+SL60W"
+            alt="Godox SL60W"
+            class="booking-image"
+          />
+          <div class="booking-content">
+            <div class="booking-info">
+              <div class="booking-status">
+                <span class="status-dot completed"></span>
+                <span style="text-transform: capitalize; font-weight: 500"
+                  >Inactive</span
+                >
+              </div>
+              <div class="booking-id">ID: #LT-4924</div>
+              <h3 class="booking-title">Godox SL60W</h3>
+              <p class="booking-description">
+                LED video light with 60W output, perfect for studio and location
+                shoots.
+              </p>
+              <div class="booking-meta">
+                <span><i class="fas fa-tag"></i> Lighting</span>
+                <span
+                  ><i class="fas fa-calendar"></i> Listed: Aug 15, 2023</span
+                >
+              </div>
+            </div>
+            <div class="booking-actions">
+              <div class="booking-price">
+                <div class="price-amount">
+                  GH₵ 100
+                  <span
+                    style="
+                      font-size: 14px;
+                      font-weight: 400;
+                      color: var(--text-gray);
+                    "
+                    >/ day</span
+                  >
+                </div>
+                <div class="price-status pending">Inactive</div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: var(--spacing-xs);
+                  align-items: center;
+                "
+              >
+                <label
+                  class="listing-toggle-switch"
+                  onclick="event.stopPropagation(); event.preventDefault();"
+                  style="margin: 0"
+                >
+                  <input
+                    type="checkbox"
+                    onchange="toggleListing(this, event)"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+                <a
+                  href="equipment-details.html"
+                  class="icon-btn"
+                  style="font-size: 16px; text-decoration: none"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button class="icon-btn" style="font-size: 16px">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Listing Card 5 -->
+        <div class="booking-card" data-status="rented">
+          <img
+            src="https://via.placeholder.com/120?text=DJI+Mavic+Air+2"
+            alt="DJI Mavic Air 2"
+            class="booking-image"
+          />
+          <div class="booking-content">
+            <div class="booking-info">
+              <div class="booking-status">
+                <span class="status-dot pending"></span>
+                <span style="text-transform: capitalize; font-weight: 500"
+                  >Rented</span
+                >
+              </div>
+              <div class="booking-id">ID: #LT-4925</div>
+              <h3 class="booking-title">DJI Mavic Air 2</h3>
+              <p class="booking-description">
+                Compact drone with 4K video capability and intelligent flight
+                modes.
+              </p>
+              <div class="booking-meta">
+                <span><i class="fas fa-tag"></i> Drones</span>
+                <span><i class="fas fa-calendar"></i> Returns today</span>
+              </div>
+            </div>
+            <div class="booking-actions">
+              <div class="booking-price">
+                <div class="price-amount">
+                  GH₵ 280
+                  <span
+                    style="
+                      font-size: 14px;
+                      font-weight: 400;
+                      color: var(--text-gray);
+                    "
+                    >/ day</span
+                  >
+                </div>
+                <div class="price-status pending">Rented</div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: var(--spacing-xs);
+                  align-items: center;
+                "
+              >
+                <a
+                  href="equipment-details.html"
+                  class="icon-btn"
+                  style="font-size: 16px; text-decoration: none"
+                >
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button class="icon-btn" style="font-size: 16px">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/my-listings.js"></script>
+  </body>
+</html>

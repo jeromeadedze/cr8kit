@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>List Your Gear - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script
+      src="https://upload-widget.cloudinary.com/global/all.js"
+      type="text/javascript"
+    ></script>
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="navbar-left">
+        <a href="browse.html" class="logo-nav">
+          <span>Cr8Kit</span>
+        </a>
+      </div>
+
+      <div class="navbar-right">
+        <ul class="nav-links">
+          <li><a href="my-listings.html" class="nav-link">Listings</a></li>
+          <li><a href="bookings.html" class="nav-link">Bookings</a></li>
+          <li><a href="#" class="nav-link">Messages</a></li>
+        </ul>
+
+        <button class="btn-save-draft">Save Draft</button>
+
+        <a href="profile.html">
+          <img
+            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=40"
+            alt="User Avatar"
+            class="user-avatar"
+          />
+        </a>
+      </div>
+    </nav>
+
+    <div class="list-item-container">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="my-listings.html">Listings</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Add New Listing</span>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="list-item-header">
+        <h1 class="list-item-title">List Your Gear</h1>
+        <p class="list-item-subtitle">
+          Fill in the details below to add your equipment to the Cr8Kit
+          marketplace.
+        </p>
+      </div>
+
+      <!-- Verify Identity Section -->
+      <div class="verify-section">
+        <div class="verify-content">
+          <i class="fas fa-check-circle verify-icon"></i>
+          <div class="verify-text">
+            <p>
+              To ensure the safety of our community, you must verify your Ghana
+              Card before publishing listings.
+            </p>
+          </div>
+        </div>
+        <button class="btn-verify-ghana">Verify Ghana Card</button>
+      </div>
+
+      <!-- Section 1: Upload Photos -->
+      <div class="form-section-card">
+        <h2 class="form-section-title">1. Upload Photos</h2>
+        <p class="form-section-description">
+          Upload at least 3 photos showing the item from different angles. First
+          image will be the cover.
+        </p>
+
+        <div class="photo-upload-grid">
+          <div class="photo-upload-slot" id="photoSlot1">
+            <button
+              class="photo-upload-label"
+              onclick="openCloudinaryWidget(1); return false;"
+            >
+              <i class="fas fa-cloud-upload-alt photo-upload-icon"></i>
+              <span>Add Photo</span>
+            </button>
+          </div>
+
+          <div class="photo-upload-slot" id="photoSlot2">
+            <button
+              class="photo-upload-label"
+              onclick="openCloudinaryWidget(2); return false;"
+            >
+              <i class="fas fa-cloud-upload-alt photo-upload-icon"></i>
+              <span>Add Photo</span>
+            </button>
+          </div>
+
+          <div class="photo-upload-slot" id="photoSlot3">
+            <button
+              class="photo-upload-label"
+              onclick="openCloudinaryWidget(3); return false;"
+            >
+              <i class="fas fa-cloud-upload-alt photo-upload-icon"></i>
+              <span>Add Photo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: The Basics -->
+      <div class="form-section-card">
+        <h2 class="form-section-title">2. The Basics</h2>
+
+        <div class="form-group">
+          <label class="form-label">Listing Title</label>
+          <input
+            type="text"
+            class="form-input"
+            placeholder="e.g. Sony A7III Mirrorless Camera Body"
+            id="listingTitle"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group-half">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="category">
+              <option value="cameras" selected>Cameras</option>
+              <option value="lenses">Lenses</option>
+              <option value="lighting">Lighting</option>
+              <option value="audio">Audio</option>
+              <option value="drones">Drones</option>
+              <option value="accessories">Accessories</option>
+            </select>
+          </div>
+
+          <div class="form-group-half">
+            <label class="form-label">Condition</label>
+            <select class="form-select" id="condition">
+              <option value="like-new" selected>Like New</option>
+              <option value="excellent">Excellent</option>
+              <option value="good">Good</option>
+              <option value="fair">Fair</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group-half">
+            <label class="form-label">Brand / Manufacturer</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="e.g. Sony"
+              id="brand"
+            />
+          </div>
+
+          <div class="form-group-half">
+            <label class="form-label">Model</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="e.g. ILCE-7M3"
+              id="model"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description & Specs</label>
+          <textarea
+            class="form-textarea"
+            placeholder="Describe your item in detail. Include what comes in the box."
+            id="description"
+            rows="6"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Section 3: Pricing -->
+      <div class="form-section-card">
+        <h2 class="form-section-title">3. Pricing</h2>
+
+        <div class="form-group">
+          <label class="form-label">Daily Rate (GHS)</label>
+          <div class="currency-input-wrapper">
+            <span class="currency-symbol">¢</span>
+            <input
+              type="number"
+              class="form-input currency-input"
+              placeholder="0.00"
+              id="dailyRate"
+              min="0"
+              step="0.01"
+            />
+          </div>
+          <p class="form-hint">Recommended: ¢250 - ¢400 for similar items.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Replacement Value (GHS)</label>
+          <div class="currency-input-wrapper">
+            <span class="currency-symbol">¢</span>
+            <input
+              type="number"
+              class="form-input currency-input"
+              placeholder="0.00"
+              id="replacementValue"
+              min="0"
+              step="0.01"
+            />
+          </div>
+          <p class="form-hint">
+            Current market value if item is lost or damaged.
+          </p>
+        </div>
+      </div>
+
+      <!-- Section 4: Location & Availability -->
+      <div class="form-section-card">
+        <h2 class="form-section-title">4. Location & Availability</h2>
+
+        <div class="form-group">
+          <label class="form-label">Pickup Location</label>
+          <div class="location-input-wrapper">
+            <input
+              type="text"
+              class="form-input"
+              value="East Legon, Accra, Ghana"
+              id="pickupLocation"
+            />
+            <button class="location-icon-btn" type="button">
+              <i class="fas fa-crosshairs"></i>
+            </button>
+          </div>
+          <div class="map-preview">
+            <div class="map-placeholder-small">
+              <i class="fas fa-map-marker-alt"></i>
+              <p>Map view</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Blocked Dates</label>
+          <p class="form-hint" style="margin-bottom: var(--spacing-md)">
+            Click dates to block them out from rentals.
+          </p>
+          <div class="calendar-container-small">
+            <div class="calendar-header-small">
+              <button
+                class="calendar-nav"
+                type="button"
+                onclick="changeMonth(-1)"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <h3 class="calendar-month-small" id="calendarMonth">
+                October 2023
+              </h3>
+              <button
+                class="calendar-nav"
+                type="button"
+                onclick="changeMonth(1)"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+            <div class="calendar-grid-small" id="calendarGrid">
+              <!-- Calendar will be generated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Settings -->
+      <div class="form-section-card">
+        <h2 class="form-section-title">5. Settings</h2>
+
+        <div class="settings-item">
+          <div class="settings-info">
+            <label class="form-label" style="margin-bottom: 4px"
+              >Active Listing</label
+            >
+            <p class="form-hint" style="margin: 0">
+              Make this item visible in search results immediately.
+            </p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="activeListing" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions-footer">
+        <button class="btn-preview">Preview</button>
+        <button class="btn-publish">Publish Listing</button>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="preview-modal">
+      <div class="preview-modal-content">
+        <div class="preview-modal-header">
+          <h2 class="preview-modal-title">Preview Listing</h2>
+          <button class="preview-modal-close" onclick="closePreview()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="preview-content">
+          <!-- Preview Images -->
+          <div class="preview-images-section">
+            <div class="preview-main-image">
+              <img
+                id="previewMainImage"
+                src="https://via.placeholder.com/800x600?text=No+Image"
+                alt="Preview"
+              />
+            </div>
+            <div class="preview-thumbnails" id="previewThumbnails">
+              <!-- Thumbnails will be populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Preview Details -->
+          <div class="preview-details-section">
+            <h1 class="preview-title" id="previewTitle">Listing Title</h1>
+
+            <div class="preview-meta">
+              <span class="preview-category" id="previewCategory"
+                >Category</span
+              >
+              <span class="preview-condition" id="previewCondition"
+                >Condition</span
+              >
+              <span class="preview-location">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="previewLocation">Location</span>
+              </span>
+            </div>
+
+            <div class="preview-price-section">
+              <div class="preview-price">
+                <span class="preview-price-amount" id="previewPrice"
+                  >¢0.00</span
+                >
+                <span class="preview-price-unit">/ day</span>
+              </div>
+            </div>
+
+            <div class="preview-info-section">
+              <h3 class="preview-section-heading">Brand & Model</h3>
+              <p class="preview-text" id="previewBrandModel">-</p>
+
+              <h3 class="preview-section-heading">Description</h3>
+              <p class="preview-text" id="previewDescription">
+                No description provided.
+              </p>
+
+              <h3 class="preview-section-heading">Replacement Value</h3>
+              <p class="preview-text" id="previewReplacementValue">¢0.00</p>
+
+              <h3 class="preview-section-heading">Status</h3>
+              <p class="preview-text">
+                <span id="previewStatus" class="preview-status-badge"
+                  >Active</span
+                >
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-modal-footer">
+          <button class="btn-secondary" onclick="closePreview()">Close</button>
+          <button class="btn-primary" onclick="closePreviewAndPublish()">
+            Publish Listing
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/list-item.js"></script>
+  </body>
+</html>

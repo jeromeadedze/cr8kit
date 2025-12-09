@@ -31,7 +31,6 @@
 
       <div class="navbar-right">
         <ul class="nav-links">
-          <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
           <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
           <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
         </ul>
@@ -63,78 +62,88 @@
 
     <div class="page-container">
       <!-- Page Header -->
-      <div class="page-header">
-        <h1 class="page-title">My Bookings</h1>
-        <p class="page-subtitle">
-          Manage your current rentals, track requests, and view your history.
-        </p>
+      <div class="owner-page-header">
+        <div>
+          <h1 class="owner-page-title">My Bookings</h1>
+          <p class="owner-page-subtitle">
+            Manage your current rentals, track requests, and view your history.
+          </p>
+        </div>
       </div>
 
-      <!-- Stats Cards -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">
+      <!-- Summary Cards -->
+      <div class="owner-summary-cards">
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
             <i class="fas fa-home"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-label">Active Rentals</div>
-            <div class="stat-value">2</div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Active Rentals</div>
+            <div class="owner-summary-value">2</div>
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
             <i class="fas fa-calendar-alt"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-label">Pending Requests</div>
-            <div class="stat-value">1</div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Pending Requests</div>
+            <div class="owner-summary-value">1</div>
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">
+        <div class="owner-summary-card">
+          <div class="owner-summary-icon">
             <i class="fas fa-dollar-sign"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-label">Total Spent</div>
-            <div class="stat-value">GHS 1,450.00</div>
+          <div class="owner-summary-content">
+            <div class="owner-summary-label">Total Spent</div>
+            <div class="owner-summary-value">GHS 1,450.00</div>
           </div>
         </div>
       </div>
 
       <!-- Filter Tabs -->
-      <div class="tabs-nav">
-        <a
-          href="#"
-          class="tab-link active"
-          onclick="filterBookings('all'); return false;"
-          >All</a
-        >
-        <a
-          href="#"
-          class="tab-link"
-          onclick="filterBookings('active'); return false;"
-          >Active</a
-        >
-        <a
-          href="#"
-          class="tab-link"
-          onclick="filterBookings('pending'); return false;"
-          >Pending</a
-        >
-        <a
-          href="#"
-          class="tab-link"
-          onclick="filterBookings('completed'); return false;"
-          >Completed</a
-        >
-        <a
-          href="#"
-          class="tab-link"
-          onclick="filterBookings('cancelled'); return false;"
-          >Cancelled</a
-        >
+      <div class="listings-controls" style="margin-bottom: var(--spacing-lg)">
+        <div style="flex: 1"></div>
+        <div class="listings-filters">
+          <button
+            class="filter-btn active"
+            data-filter="all"
+            onclick="filterBookings('all'); return false;"
+          >
+            All
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="active"
+            onclick="filterBookings('active'); return false;"
+          >
+            Active
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="pending"
+            onclick="filterBookings('pending'); return false;"
+          >
+            Pending
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="completed"
+            onclick="filterBookings('completed'); return false;"
+          >
+            Completed
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="cancelled"
+            onclick="filterBookings('cancelled'); return false;"
+          >
+            Cancelled
+          </button>
+        </div>
       </div>
 
       <!-- Bookings List -->

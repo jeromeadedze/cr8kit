@@ -6,13 +6,30 @@
 let currentPage = 1;
 let isLoading = false;
 
+// Helper function to get optimized Cloudinary image URL
+function getOptimizedImageUrl(publicId, width = 280, height = 200) {
+  if (!publicId) return "https://via.placeholder.com/280x200?text=No+Image";
+  
+  const transformations = [
+    `w_${width}`,
+    `h_${height}`,
+    "c_fill",
+    "q_auto:good",
+    "f_auto",
+    "dpr_auto"
+  ].join(",");
+  
+  return `https://res.cloudinary.com/dpfsqrccq/image/upload/${transformations}/${publicId}`;
+}
+
 // Sample equipment data (replace with API call)
+// Note: In production, these would have Cloudinary public_ids
 const sampleEquipment = [
   {
     id: 1,
     name: "Sony A7S III Body",
     category: "Cameras",
-    image: "https://via.placeholder.com/280x200?text=Sony+A7S+III",
+    image: getOptimizedImageUrl("cr8kit/equipment/sony-a7s-iii", 280, 200),
     rating: 4.9,
     location: "Osu, Accra",
     owner: "Kojo Studios",
@@ -24,7 +41,7 @@ const sampleEquipment = [
     id: 2,
     name: "Aputure 300d II Set",
     category: "Lighting",
-    image: "https://via.placeholder.com/280x200?text=Aputure+300d",
+    image: getOptimizedImageUrl("cr8kit/equipment/aputure-300d", 280, 200),
     rating: 5.0,
     location: "East Legon",
     owner: "Lens Queen",
@@ -36,7 +53,7 @@ const sampleEquipment = [
     id: 3,
     name: "DJI Mavic 3 Cine",
     category: "Drones",
-    image: "https://via.placeholder.com/280x200?text=DJI+Mavic+3",
+    image: getOptimizedImageUrl("cr8kit/equipment/dji-mavic-3", 280, 200),
     rating: 4.8,
     location: "Kumasi Central",
     owner: "Sky High",
@@ -48,7 +65,7 @@ const sampleEquipment = [
     id: 4,
     name: "Rode NTG3 Shotgun",
     category: "Audio",
-    image: "https://via.placeholder.com/280x200?text=Rode+NTG3",
+    image: getOptimizedImageUrl("cr8kit/equipment/rode-ntg3", 280, 200),
     rating: 4.7,
     location: "Tema",
     owner: "Audio Pro",
@@ -60,7 +77,7 @@ const sampleEquipment = [
     id: 5,
     name: "Canon RF 24-70mm",
     category: "Cameras",
-    image: "https://via.placeholder.com/280x200?text=Canon+RF",
+    image: getOptimizedImageUrl("cr8kit/equipment/canon-rf-24-70", 280, 200),
     rating: 5.0,
     location: "Cantonments",
     owner: "Kojo Studios",
@@ -72,7 +89,7 @@ const sampleEquipment = [
     id: 6,
     name: "DJI Ronin RS3 Pro",
     category: "Accessories",
-    image: "https://via.placeholder.com/280x200?text=DJI+Ronin",
+    image: getOptimizedImageUrl("cr8kit/equipment/dji-ronin-rs3", 280, 200),
     rating: 4.7,
     location: "Spintex",
     owner: "Motion Gh",
@@ -164,9 +181,18 @@ function createEquipmentCard(item) {
   card.onclick = () =>
     (window.location.href = `equipment-details.html?id=${item.id}`);
 
+  // Use optimized image URL with lazy loading
+  const optimizedImage = item.image || getOptimizedImageUrl(item.publicId || "", 280, 200);
+  
   card.innerHTML = `
         <div style="position: relative;">
-            <img src="${item.image}" alt="${item.name}" class="card-image" />
+            <img 
+                src="${optimizedImage}" 
+                alt="${item.name}" 
+                class="card-image" 
+                loading="lazy"
+                onerror="this.src='https://via.placeholder.com/280x200?text=No+Image'"
+            />
             <button class="card-favorite" onclick="event.stopPropagation(); toggleFavorite(${item.id})">
                 <i class="far fa-heart"></i>
             </button>

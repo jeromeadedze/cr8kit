@@ -3,6 +3,29 @@
  * Cr8Kit - Ghana Creative Rentals Platform
  */
 
+// Filter bookings
+function filterBookings(status) {
+  const bookingCards = document.querySelectorAll(".booking-card");
+  const filterButtons = document.querySelectorAll(".filter-btn");
+
+  // Update active filter button
+  filterButtons.forEach((btn) => {
+    btn.classList.remove("active");
+    if (btn.getAttribute("data-filter") === status) {
+      btn.classList.add("active");
+    }
+  });
+
+  bookingCards.forEach((card) => {
+    const cardStatus = card.getAttribute("data-status");
+    if (status === "all" || cardStatus === status) {
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
 // Load older bookings
 function loadOlderBookings() {
     console.log('Loading older bookings...');
