@@ -323,9 +323,17 @@
 
 /* Date Inputs */
 .date-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+.date-separator {
+  text-align: center;
+  color: var(--text-gray);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 0;
 }
 
 .date-input {
