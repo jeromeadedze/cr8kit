@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="navbar-left">
+        <a href="browse.html" class="logo-nav">
+          <span>Cr8Kit</span>
+        </a>
+
+        <div class="search-container">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search equipment..."
+          />
+          <i class="fas fa-search search-icon"></i>
+        </div>
+      </div>
+
+      <div class="navbar-right">
+        <ul class="nav-links">
+          <li><a href="browse.html" class="nav-link">Explore</a></li>
+          <li><a href="#" class="nav-link">How it Works</a></li>
+        </ul>
+
+        <div class="nav-icons">
+          <button class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge"></span>
+          </button>
+        </div>
+
+        <a href="profile.html">
+          <img
+            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=40"
+            alt="User Avatar"
+            class="user-avatar"
+          />
+        </a>
+      </div>
+    </nav>
+
+    <div class="profile-layout">
+      <!-- Left Sidebar -->
+      <aside class="profile-sidebar">
+        <!-- User Profile Card -->
+        <div class="profile-card">
+          <img
+            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=120"
+            alt="Kwame Mensah"
+            class="profile-avatar-large"
+          />
+          <h2 class="profile-name">Kwame Mensah</h2>
+          <div class="profile-rating">
+            <i class="fas fa-star star-icon"></i>
+            <span>4.8</span>
+            <span class="rating-count">(24 rentals)</span>
+          </div>
+          <button class="btn-verified">
+            <i class="fas fa-check-circle"></i> GHANA CARD VERIFIED
+          </button>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="profile-nav">
+          <a
+            href="#personal-info"
+            class="profile-nav-link active"
+            onclick="showSection('personal-info'); return false;"
+          >
+            <i class="fas fa-user"></i>
+            <span>Personal Info</span>
+          </a>
+          <a
+            href="#booking-history"
+            class="profile-nav-link"
+            onclick="showSection('booking-history'); return false;"
+          >
+            <i class="fas fa-history"></i>
+            <span>Booking History</span>
+          </a>
+          <a
+            href="#security"
+            class="profile-nav-link"
+            onclick="showSection('security'); return false;"
+          >
+            <i class="fas fa-shield-alt"></i>
+            <span>Security</span>
+          </a>
+          <a
+            href="#my-equipment"
+            class="profile-nav-link"
+            onclick="showSection('my-equipment'); return false;"
+          >
+            <i class="fas fa-camera"></i>
+            <span>My Equipment</span>
+          </a>
+        </nav>
+
+        <!-- Sign Out Button -->
+        <button class="btn-sign-out">
+          <i class="fas fa-sign-out-alt"></i> Sign Out
+        </button>
+
+        <!-- Rent Out Your Gear Section -->
+        <div class="rent-out-card">
+          <div class="rent-out-icon">
+            <i class="fas fa-camera"></i>
+          </div>
+          <h3 class="rent-out-title">Rent out your gear</h3>
+          <p class="rent-out-text">
+            Earn extra income by listing your unused equipment.
+          </p>
+          <a href="list-item.html" class="rent-out-link">
+            Start Listing <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="profile-content">
+        <!-- Overview Cards -->
+        <div class="overview-cards">
+          <div class="overview-card">
+            <div class="overview-icon">
+              <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="overview-content">
+              <div class="overview-label">TOTAL EARNED</div>
+              <div class="overview-value">GHC 4,250</div>
+            </div>
+          </div>
+
+          <div class="overview-card">
+            <div class="overview-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="overview-content">
+              <div class="overview-label">PENDING PAYOUT</div>
+              <div class="overview-value">
+                GHC 320 <span class="processing-badge">Processing</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="overview-card">
+            <div class="overview-icon">
+              <i class="fas fa-list"></i>
+            </div>
+            <div class="overview-content">
+              <div class="overview-label">ACTIVE LISTINGS</div>
+              <div class="overview-value">8 Items</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Info Section -->
+        <div id="personal-info" class="content-section active">
+          <div class="section-header-row">
+            <h2 class="section-heading">Personal Details</h2>
+            <a
+              href="#"
+              class="save-link"
+              onclick="savePersonalInfo(); return false;"
+              >Save Changes</a
+            >
+          </div>
+
+          <div class="form-section">
+            <div class="form-row">
+              <div class="form-group-half">
+                <label class="form-label">First Name</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  value="Kwame"
+                  id="firstName"
+                />
+              </div>
+              <div class="form-group-half">
+                <label class="form-label">Last Name</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  value="Mensah"
+                  id="lastName"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <div class="input-wrapper">
+                <input
+                  type="email"
+                  class="form-input"
+                  value="kwame.mensah@example.com"
+                  id="email"
+                />
+                <i class="fas fa-envelope input-icon"></i>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <div class="input-wrapper">
+                <input
+                  type="tel"
+                  class="form-input"
+                  value="+233 54 123 4567"
+                  id="phone"
+                />
+                <i class="fas fa-phone input-icon"></i>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bio / About Me</label>
+              <textarea class="form-textarea" id="bio" rows="4">
+Freelance photographer and videographer based in Accra. I love capturing the vibrant culture of Ghana. Treat my gear with respect!</textarea
+              >
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-primary" onclick="savePersonalInfo()">
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Section -->
+        <div id="security" class="content-section">
+          <h2 class="section-heading">Security</h2>
+
+          <!-- Two-Factor Authentication -->
+          <div class="security-item">
+            <div class="security-info">
+              <h3 class="security-title">Two-Factor Authentication (2FA)</h3>
+              <p class="security-description">
+                Add an extra layer of security to your account.
+              </p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="twoFactorToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Change Password -->
+          <div class="password-section">
+            <h3 class="security-title">Change Password</h3>
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  class="form-input"
+                  placeholder="Enter new password"
+                  id="newPassword"
+                />
+                <i class="fas fa-lock input-icon"></i>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm Password</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  class="form-input"
+                  placeholder="Confirm new password"
+                  id="confirmPassword"
+                />
+                <i class="fas fa-lock input-icon"></i>
+              </div>
+            </div>
+            <a
+              href="#"
+              class="update-password-link"
+              onclick="updatePassword(); return false;"
+              >Update Password</a
+            >
+          </div>
+        </div>
+
+        <!-- Booking History Section -->
+        <div id="booking-history" class="content-section">
+          <div class="section-header-row">
+            <h2 class="section-heading">Recent Bookings</h2>
+            <a href="bookings.html" class="view-all-link">View All</a>
+          </div>
+
+          <div class="bookings-table-container">
+            <table class="bookings-table">
+              <thead>
+                <tr>
+                  <th>EQUIPMENT</th>
+                  <th>DATES</th>
+                  <th>TOTAL</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="equipment-cell">
+                      <i class="fas fa-camera equipment-icon"></i>
+                      <span>Sony A7III Body</span>
+                    </div>
+                  </td>
+                  <td>Oct 24 - Oct 26</td>
+                  <td>GHC 450</td>
+                  <td>
+                    <span class="status-badge returned">Returned</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="equipment-cell">
+                      <i class="fas fa-drone equipment-icon"></i>
+                      <span>DJI Mavic Air 2</span>
+                    </div>
+                  </td>
+                  <td>Oct 12 - Oct 14</td>
+                  <td>GHC 300</td>
+                  <td>
+                    <span class="status-badge returned">Returned</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- My Equipment Section -->
+        <div id="my-equipment" class="content-section">
+          <div class="section-header-row">
+            <h2 class="section-heading">My Equipment</h2>
+            <a href="list-item.html" class="btn-list-item">List New Item</a>
+          </div>
+
+          <div class="equipment-grid">
+            <!-- Equipment cards will be loaded here -->
+            <p
+              style="
+                text-align: center;
+                color: var(--text-gray);
+                padding: var(--spacing-xl);
+              "
+            >
+              No equipment listed yet.
+              <a href="list-item.html" style="color: var(--primary-orange)"
+                >List your first item</a
+              >
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="js/profile.js"></script>
+  </body>
+</html>
