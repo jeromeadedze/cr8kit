@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-container">
+        <h1 class="logo-text">Cr8Kit</h1>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+      <div class="auth-card">
+        <!-- Welcome Message -->
+        <div class="welcome-section">
+          <h2 class="welcome-title">Welcome back</h2>
+          <p class="welcome-subtitle">Enter your details to access your gear</p>
+        </div>
+
+        <!-- Sign In Form -->
+        <form id="signInForm" class="auth-form" novalidate>
+          <!-- Email Field -->
+          <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <div class="input-wrapper">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="form-input"
+                placeholder="name@example.com"
+                required
+              />
+              <i class="fas fa-envelope input-icon"></i>
+            </div>
+            <span class="error-message" id="emailError"></span>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="password" class="form-label">Password</label>
+              <a href="#" class="forgot-password-link">Forgot Password?</a>
+            </div>
+            <div class="input-wrapper">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="form-input"
+                placeholder="Enter your password"
+                required
+              />
+              <i
+                class="fas fa-eye-slash input-icon password-toggle"
+                id="passwordToggle"
+              ></i>
+            </div>
+            <span class="error-message" id="passwordError"></span>
+          </div>
+
+          <!-- Keep Signed In Checkbox -->
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                id="keepSignedIn"
+                name="keepSignedIn"
+                class="checkbox-input"
+              />
+              <span class="checkbox-text">Keep me signed in</span>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn btn-primary">Sign In</button>
+
+          <!-- New Customer Link -->
+          <div class="auth-link">
+            <span>New Customer?</span>
+            <a href="signup.html" class="auth-link-text">Create account</a>
+          </div>
+
+          <!-- Terms & Privacy -->
+          <p class="terms-text">
+            By signing in, you agree to our
+            <a href="#" class="terms-link">Terms</a> &
+            <a href="#" class="terms-link">Privacy Policy</a>.
+          </p>
+        </form>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <a href="#" class="footer-link">Help Center</a>
+      <span class="footer-separator">|</span>
+      <a href="#" class="footer-link">Contact Support</a>
+    </footer>
+
+    <script src="js/auth.js"></script>
+  </body>
+</html>

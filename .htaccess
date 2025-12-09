@@ -1,0 +1,28 @@
+# Cr8Kit - Apache Configuration
+# Enable error reporting for development (remove in production)
+php_flag display_errors On
+php_value error_reporting E_ALL
+
+# Enable URL rewriting
+RewriteEngine On
+
+# Redirect to index.html if accessing root directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Security: Prevent directory listing
+Options -Indexes
+
+# Security: Protect sensitive files
+<FilesMatch "\.(sql|log|ini)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# CORS headers (if needed for API)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
