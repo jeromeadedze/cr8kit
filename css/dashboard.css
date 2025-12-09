@@ -803,6 +803,29 @@
   margin-bottom: var(--spacing-lg);
 }
 
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  display: block;
+}
+
+.page-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.page-subtitle {
+  color: var(--text-gray);
+  font-size: 14px;
+}
+
 .tab-link {
   padding: var(--spacing-sm) var(--spacing-md);
   color: var(--text-gray);
