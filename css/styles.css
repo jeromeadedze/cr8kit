@@ -53,16 +53,18 @@ body {
 
 /* Header Styles */
 .header {
-  padding: var(--spacing-lg) var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top: var(--spacing-md);
 }
 
 .logo-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
 }
 
 .logo-text {
@@ -70,6 +72,16 @@ body {
   font-weight: 600;
   color: var(--text-dark);
   letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.logo-tagline {
+  font-size: 14px;
+  color: var(--text-gray);
+  text-align: center;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 /* Main Container */
@@ -413,6 +425,10 @@ body {
     font-size: 24px;
   }
 
+  .logo-tagline {
+    font-size: 13px;
+  }
+
   .tabs {
     gap: var(--spacing-md);
   }
@@ -429,7 +445,12 @@ body {
 
 @media (max-width: 480px) {
   .header {
-    padding: var(--spacing-md) var(--spacing-sm);
+    padding: var(--spacing-lg) var(--spacing-sm) var(--spacing-md);
+  }
+
+  .logo-tagline {
+    font-size: 12px;
+    padding: 0 var(--spacing-sm);
   }
 
   .main-container {
