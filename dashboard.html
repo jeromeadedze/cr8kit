@@ -1,121 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard - Cr8Kit</title>
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
     <!-- Navigation Bar -->
     <nav class="navbar">
-        <div class="navbar-left">
-            <a href="browse.html" class="logo-nav">
-                <span>Cr8Kit</span>
-            </a>
-            
-            <div class="search-container">
-                <input 
-                    type="text" 
-                    class="search-input" 
-                    placeholder="Search cameras, lenses, lighting..."
-                />
-                <i class="fas fa-search search-icon"></i>
-            </div>
-        </div>
-        
-        <div class="navbar-right">
-            <ul class="nav-links">
-                <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
-                <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
-            </ul>
-            
-            <a href="list-item.html" class="btn-list-item">List Item</a>
-            
-            <div class="nav-icons">
-                <button class="icon-btn" title="Messages">
-                    <i class="fas fa-comment"></i>
-                </button>
-            </div>
-            
-            <a href="profile.html">
-                <img 
-                    src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=40" 
-                    alt="User Avatar" 
-                    class="user-avatar"
-                />
-            </a>
-        </div>
-    </nav>
-    
-    <div class="main-content" style="max-width: 1200px; margin: 0 auto; padding: var(--spacing-lg);">
-        <div style="margin-bottom: var(--spacing-xl);">
-            <h1 style="font-size: 32px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--spacing-xs);">
-                Dashboard
-            </h1>
-            <p style="color: var(--text-gray);">
-                Manage your rentals and discover new equipment.
-            </p>
-        </div>
-        
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-home"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Active Rentals</div>
-                    <div class="stat-value">2</div>
-                </div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Pending Requests</div>
-                    <div class="stat-value">1</div>
-                </div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-dollar-sign"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Total Spent</div>
-                    <div class="stat-value">GHS 1,450.00</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Quick Actions -->
-        <div style="background: var(--card-white); border-radius: var(--radius-md); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); margin-bottom: var(--spacing-lg);">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: var(--spacing-md);">Quick Actions</h2>
-            <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap;">
-                <a href="browse.html" class="btn-list-item">
-                    <i class="fas fa-search"></i> Browse Equipment
-                </a>
-                <a href="bookings.html" class="btn-list-item" style="background: var(--card-white); color: var(--primary-orange); border: 2px solid var(--primary-orange);">
-                    <i class="fas fa-calendar"></i> My Bookings
-                </a>
-            </div>
-        </div>
-        
-        <!-- Recent Activity -->
-        <div style="background: var(--card-white); border-radius: var(--radius-md); padding: var(--spacing-lg); box-shadow: var(--shadow-sm);">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: var(--spacing-md);">Recent Activity</h2>
-            <p style="color: var(--text-gray); text-align: center; padding: var(--spacing-lg);">
-                No recent activity to display.
-            </p>
-        </div>
-    </div>
-    
-    <script src="js/dashboard.js"></script>
-</body>
-</html>
+      <div class="navbar-left">
+        <a href="browse.html" class="logo-nav">
+          <span>Cr8Kit</span>
+        </a>
 
+        <div class="search-container">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search cameras, lenses, lighting..."
+          />
+          <i class="fas fa-search search-icon"></i>
+        </div>
+      </div>
+
+      <div class="navbar-right">
+        <ul class="nav-links">
+          <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
+          <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
+        </ul>
+
+        <a href="list-item.html" class="btn-list-item">List Item</a>
+
+        <a href="profile.html">
+          <img
+            src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=40"
+            alt="User Avatar"
+            class="user-avatar"
+          />
+        </a>
+      </div>
+    </nav>
+
+    <div
+      class="main-content"
+      style="max-width: 1200px; margin: 0 auto; padding: var(--spacing-lg)"
+    >
+      <div style="margin-bottom: var(--spacing-xl)">
+        <h1
+          style="
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-xs);
+          "
+        >
+          Dashboard
+        </h1>
+        <p style="color: var(--text-gray)">
+          Manage your rentals and discover new equipment.
+        </p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-home"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Active Rentals</div>
+            <div class="stat-value">2</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Pending Requests</div>
+            <div class="stat-value">1</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value">GHS 1,450.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div
+        style="
+          background: var(--card-white);
+          border-radius: var(--radius-md);
+          padding: var(--spacing-lg);
+          box-shadow: var(--shadow-sm);
+          margin-bottom: var(--spacing-lg);
+        "
+      >
+        <h2
+          style="
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+          "
+        >
+          Quick Actions
+        </h2>
+        <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap">
+          <a href="browse.html" class="btn-list-item">
+            <i class="fas fa-search"></i> Browse Equipment
+          </a>
+          <a
+            href="bookings.html"
+            class="btn-list-item"
+            style="
+              background: var(--card-white);
+              color: var(--primary-orange);
+              border: 2px solid var(--primary-orange);
+            "
+          >
+            <i class="fas fa-calendar"></i> My Bookings
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div
+        style="
+          background: var(--card-white);
+          border-radius: var(--radius-md);
+          padding: var(--spacing-lg);
+          box-shadow: var(--shadow-sm);
+        "
+      >
+        <h2
+          style="
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+          "
+        >
+          Recent Activity
+        </h2>
+        <p
+          style="
+            color: var(--text-gray);
+            text-align: center;
+            padding: var(--spacing-lg);
+          "
+        >
+          No recent activity to display.
+        </p>
+      </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+  </body>
+</html>
