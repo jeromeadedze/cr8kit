@@ -6,6 +6,8 @@
     <title>Profile - Cr8Kit</title>
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/supa.js"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -23,7 +25,8 @@
           <input
             type="text"
             class="search-input"
-            placeholder="Search equipment..."
+            placeholder="Search cameras, lenses, lighting..."
+            id="searchInput"
           />
           <i class="fas fa-search search-icon"></i>
         </div>
@@ -31,13 +34,15 @@
 
       <div class="navbar-right">
         <ul class="nav-links">
-          <li><a href="browse.html" class="nav-link">Explore</a></li>
-          <li><a href="#" class="nav-link">How it Works</a></li>
+          <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
+          <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
         </ul>
+
+        <a href="list-item.html" class="btn-list-item">List Item</a>
 
         <a href="profile.html">
           <img
-            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=40"
+            src="https://ui-avatars.com/api/?name=User&background=fe742c&color=fff&size=40"
             alt="User Avatar"
             class="user-avatar"
           />
@@ -51,11 +56,11 @@
         <!-- User Profile Card -->
         <div class="profile-card">
           <img
-            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=120"
-            alt="Kwame Mensah"
+            src="https://ui-avatars.com/api/?name=User&background=fe742c&color=fff&size=120"
+            alt="User"
             class="profile-avatar-large"
           />
-          <h2 class="profile-name">Kwame Mensah</h2>
+          <h2 class="profile-name">Loading...</h2>
           <div class="profile-rating">
             <i class="fas fa-star star-icon"></i>
             <span>4.8</span>
@@ -103,7 +108,7 @@
         </nav>
 
         <!-- Sign Out Button -->
-        <button class="btn-sign-out">
+        <button type="button" class="btn-sign-out" id="signOutBtn">
           <i class="fas fa-sign-out-alt"></i> Sign Out
         </button>
 
@@ -128,12 +133,6 @@
         <div id="personal-info" class="content-section active">
           <div class="section-header-row">
             <h2 class="section-heading">Personal Details</h2>
-            <a
-              href="#"
-              class="save-link"
-              onclick="savePersonalInfo(); return false;"
-              >Save Changes</a
-            >
           </div>
 
           <div class="form-section">
@@ -143,8 +142,9 @@
                 <input
                   type="text"
                   class="form-input"
-                  value="Kwame"
+                  value=""
                   id="firstName"
+                  placeholder="First Name"
                 />
               </div>
               <div class="form-group-half">
@@ -152,8 +152,9 @@
                 <input
                   type="text"
                   class="form-input"
-                  value="Mensah"
+                  value=""
                   id="lastName"
+                  placeholder="Last Name"
                 />
               </div>
             </div>
@@ -164,8 +165,9 @@
                 <input
                   type="email"
                   class="form-input"
-                  value="kwame.mensah@example.com"
+                  value=""
                   id="email"
+                  placeholder="Email Address"
                 />
                 <i class="fas fa-envelope input-icon"></i>
               </div>
@@ -177,8 +179,9 @@
                 <input
                   type="tel"
                   class="form-input"
-                  value="+233 54 123 4567"
+                  value=""
                   id="phone"
+                  placeholder="Phone Number"
                 />
                 <i class="fas fa-phone input-icon"></i>
               </div>
@@ -186,13 +189,16 @@
 
             <div class="form-group">
               <label class="form-label">Bio / About Me</label>
-              <textarea class="form-textarea" id="bio" rows="4">
-Freelance photographer and videographer based in Accra. I love capturing the vibrant culture of Ghana. Treat my gear with respect!</textarea
-              >
+              <textarea
+                class="form-textarea"
+                id="bio"
+                rows="4"
+                placeholder="Tell us about yourself..."
+              ></textarea>
             </div>
 
             <div class="form-actions">
-              <button class="btn-primary" onclick="savePersonalInfo()">
+              <button class="btn btn-primary" onclick="savePersonalInfo()">
                 Save Changes
               </button>
             </div>
@@ -329,5 +335,59 @@ Freelance photographer and videographer based in Accra. I love capturing the vib
     </div>
 
     <script src="js/profile.js"></script>
+    
+    <!-- Backup inline script for sign out button -->
+    <script>
+      // Immediate initialization as backup
+      (function() {
+        function setupSignOutButton() {
+          const btn = document.getElementById('signOutBtn');
+          if (btn && !btn.dataset.initialized) {
+            btn.dataset.initialized = 'true';
+            console.log('Backup: Setting up sign out button');
+            
+            btn.onclick = function(e) {
+              console.log('Backup: Button clicked via inline script');
+              e.preventDefault();
+              e.stopPropagation();
+              
+              if (typeof window.handleSignOut === 'function') {
+                window.handleSignOut(e);
+              } else {
+                console.error('Backup: handleSignOut not available, trying direct sign out...');
+                
+                // Fallback: direct sign out
+                if (confirm('Are you sure you want to sign out?')) {
+                  if (window.supabaseClient) {
+                    window.supabaseClient.auth.signOut().then(function() {
+                      localStorage.clear();
+                      sessionStorage.clear();
+                      window.location.replace('index.html');
+                    }).catch(function(err) {
+                      console.error('Sign out error:', err);
+                      alert('Error signing out: ' + (err.message || 'Please try again.'));
+                    });
+                  } else {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                  }
+                }
+              }
+            };
+          }
+        }
+        
+        // Try immediately
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setupSignOutButton);
+        } else {
+          setupSignOutButton();
+        }
+        
+        // Also try after a delay as backup
+        setTimeout(setupSignOutButton, 1000);
+      })();
+    </script>
   </body>
 </html>

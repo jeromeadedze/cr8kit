@@ -9,16 +9,16 @@ let isLoading = false;
 // Helper function to get optimized Cloudinary image URL
 function getOptimizedImageUrl(publicId, width = 280, height = 200) {
   if (!publicId) return "https://via.placeholder.com/280x200?text=No+Image";
-  
+
   const transformations = [
     `w_${width}`,
     `h_${height}`,
     "c_fill",
     "q_auto:good",
     "f_auto",
-    "dpr_auto"
+    "dpr_auto",
   ].join(",");
-  
+
   return `https://res.cloudinary.com/dpfsqrccq/image/upload/${transformations}/${publicId}`;
 }
 
@@ -101,6 +101,10 @@ const sampleEquipment = [
 
 // Initialize page
 document.addEventListener("DOMContentLoaded", function () {
+  // Update user info (welcome message, avatar)
+  if (window.updateUserInfo) {
+    window.updateUserInfo();
+  }
   loadEquipment();
   setupSearch();
 });
@@ -119,45 +123,62 @@ function loadEquipment() {
   const category = checkedCategories.length > 0 ? checkedCategories[0] : null;
   const minPrice = document.getElementById("minPriceSlider")?.value || 50;
   const maxPrice = document.getElementById("maxPriceSlider")?.value || 1200;
-  const location = document.getElementById("locationFilter")?.value || "";
+  const city = document.getElementById("locationFilter")?.value || "";
   const search = document.getElementById("searchInput")?.value || "";
-  const sort = document.getElementById("sortSelect")?.value || "recommended";
 
-  // Build query string
-  const params = new URLSearchParams();
-  if (category) params.append("category", category);
-  params.append("minPrice", minPrice);
-  params.append("maxPrice", maxPrice);
-  if (location) params.append("location", location);
-  if (search) params.append("search", search);
-  params.append("sort", sort);
-  params.append("page", currentPage);
-  params.append("limit", 12);
+  // Build Supabase query
+  let query = window.supabaseClient
+    .from("equipment")
+    .select(
+      "equipment_id, name, category, description, price_per_day, location, city, rating, total_rentals, is_available, owner_id, image_url"
+    )
+    .order("created_at", { ascending: false })
+    .range((currentPage - 1) * 12, currentPage * 12 - 1);
 
-  // Fetch from API
-  fetch(`api/equipment.php?${params.toString()}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success && data.data.equipment) {
-        if (currentPage === 1) {
-          grid.innerHTML = "";
-        }
+  // Apply filters
+  if (category) query = query.eq("category", category);
+  if (city) query = query.ilike("city", `%${city}%`);
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+  }
+  if (minPrice) query = query.gte("price_per_day", minPrice);
+  if (maxPrice) query = query.lte("price_per_day", maxPrice);
 
-        data.data.equipment.forEach((item) => {
-          const card = createEquipmentCard(item);
+  query
+    .then(({ data, error }) => {
+      if (error) throw error;
+
+      if (currentPage === 1) {
+        grid.innerHTML = "";
+      }
+
+      if (data && data.length > 0) {
+        data.forEach((item) => {
+          const normalized = {
+            id: item.equipment_id,
+            name: item.name,
+            category: item.category,
+            description: item.description,
+            price_per_day: item.price_per_day,
+            location: item.location,
+            city: item.city,
+            rating: item.rating,
+            total_rentals: item.total_rentals,
+            is_available: item.is_available,
+            image_url: item.image_url,
+            owner: item.owner_id,
+          };
+          const card = createEquipmentCard(normalized);
           grid.appendChild(card);
         });
 
-        // Update count
         const countEl = document.getElementById("equipmentCount");
         if (countEl) {
-          countEl.textContent = data.data.pagination.total;
+          countEl.textContent = data.length;
         }
       } else {
-        if (currentPage === 1) {
-          grid.innerHTML =
-            '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray);">No equipment found.</p>';
-        }
+        grid.innerHTML =
+          '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray);">No equipment found.</p>';
       }
       isLoading = false;
     })
@@ -165,6 +186,7 @@ function loadEquipment() {
       console.error("Error loading equipment:", error);
       // Fallback to sample data
       if (currentPage === 1) {
+        grid.innerHTML = "";
         sampleEquipment.forEach((item) => {
           const card = createEquipmentCard(item);
           grid.appendChild(card);
@@ -182,8 +204,20 @@ function createEquipmentCard(item) {
     (window.location.href = `equipment-details.html?id=${item.id}`);
 
   // Use optimized image URL with lazy loading
-  const optimizedImage = item.image || getOptimizedImageUrl(item.publicId || "", 280, 200);
-  
+  // Handle both API response format and sample data format
+  const imageUrl = item.image_url || item.image || "";
+  const optimizedImage = imageUrl
+    ? imageUrl.startsWith("http")
+      ? imageUrl
+      : getOptimizedImageUrl(imageUrl, 280, 200)
+    : getOptimizedImageUrl("", 280, 200);
+
+  // Format location (API returns city, sample data has location)
+  const location = item.location || `${item.city || "Accra"}`;
+  const ownerName = item.owner?.name || item.owner || "Unknown";
+  const price = item.price_per_day || item.price || 0;
+  const rating = item.rating || 0;
+
   card.innerHTML = `
         <div style="position: relative;">
             <img 
@@ -193,7 +227,9 @@ function createEquipmentCard(item) {
                 loading="lazy"
                 onerror="this.src='https://via.placeholder.com/280x200?text=No+Image'"
             />
-            <button class="card-favorite" onclick="event.stopPropagation(); toggleFavorite(${item.id})">
+            <button class="card-favorite" onclick="event.stopPropagation(); toggleFavorite(${
+              item.id
+            })">
                 <i class="far fa-heart"></i>
             </button>
         </div>
@@ -201,14 +237,14 @@ function createEquipmentCard(item) {
             <h3 class="card-title">${item.name}</h3>
             <div class="card-rating">
                 <i class="fas fa-star star-icon"></i>
-                <span>${item.rating}</span>
+                <span>${rating.toFixed(1)}</span>
             </div>
             <div class="card-location">
                 <i class="fas fa-map-marker-alt"></i>
-                <span>${item.location}</span>
+                <span>${location}</span>
             </div>
-            <div class="card-owner">Listed by ${item.owner}</div>
-            <div class="card-price">GHS ${item.price}/day</div>
+            <div class="card-owner">Listed by ${ownerName}</div>
+            <div class="card-price">GHS ${price.toFixed(2)}/day</div>
         </div>
     `;
 

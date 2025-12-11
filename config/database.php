@@ -20,14 +20,40 @@ function getDBConnection() {
     
     if ($pdo === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            // Try multiple connection methods for XAMPP compatibility
+            $connectionMethods = [
+                // Method 1: Standard localhost connection
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
+                // Method 2: 127.0.0.1 connection
+                "mysql:host=127.0.0.1;dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
+                // Method 3: XAMPP socket path
+                "mysql:unix_socket=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock;dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
+            ];
+            
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
             
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            $lastError = null;
+            foreach ($connectionMethods as $dsn) {
+                try {
+                    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+                    // Connection successful, break out of loop
+                    break;
+                } catch (PDOException $e) {
+                    $lastError = $e;
+                    // Try next method
+                    continue;
+                }
+            }
+            
+            // If all methods failed, throw the last error
+            if ($pdo === null) {
+                throw $lastError;
+            }
+            
         } catch (PDOException $e) {
             error_log("Database Connection Error: " . $e->getMessage());
             return null;

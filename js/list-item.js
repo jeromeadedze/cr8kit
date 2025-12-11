@@ -3,13 +3,13 @@
  * Cr8Kit - Ghana Creative Rentals Platform
  */
 
-let currentMonth = 10; // October
-let currentYear = 2023;
-let blockedDates = new Set();
+let uploadedImages = {}; // Store uploaded image data by slot number
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Initialize calendar
-  renderCalendar();
+  // Update user info (navbar avatar)
+  if (window.updateUserInfo) {
+    window.updateUserInfo();
+  }
 
   // Initialize photo upload handlers
   initPhotoUploads();
@@ -137,104 +137,7 @@ function removePhoto(slotNumber) {
   `;
 }
 
-// Render calendar
-function renderCalendar() {
-  const calendarGrid = document.getElementById("calendarGrid");
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  // Update month display
-  document.getElementById("calendarMonth").textContent = `${
-    monthNames[currentMonth - 1]
-  } ${currentYear}`;
-
-  // Get first day of month and number of days
-  const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
-
-  // Day headers
-  const dayHeaders = ["S", "M", "T", "W", "T", "F", "S"];
-  let html = "";
-
-  // Add day headers
-  dayHeaders.forEach((day) => {
-    html += `<div class="calendar-day-header-small">${day}</div>`;
-  });
-
-  // Add days from previous month (show trailing days)
-  for (let i = firstDay - 1; i >= 0; i--) {
-    const day = daysInPrevMonth - i;
-    html += `<div class="calendar-day-small other-month">${day}</div>`;
-  }
-
-  // Add days from current month
-  const today = new Date();
-  const isCurrentMonth =
-    today.getMonth() + 1 === currentMonth &&
-    today.getFullYear() === currentYear;
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateKey = `${currentYear}-${String(currentMonth).padStart(
-      2,
-      "0"
-    )}-${String(day).padStart(2, "0")}`;
-    const isBlocked = blockedDates.has(dateKey);
-    const isToday = isCurrentMonth && day === today.getDate();
-
-    let classes = "calendar-day-small";
-    if (isBlocked) classes += " blocked";
-    if (isToday) classes += " today";
-
-    html += `<div class="${classes}" data-date="${dateKey}" onclick="toggleBlockedDate('${dateKey}')">${day}</div>`;
-  }
-
-  // Fill remaining cells with next month's days
-  const totalCells = 42; // 7 days * 6 weeks
-  const cellsUsed = dayHeaders.length + firstDay + daysInMonth;
-  const remainingCells = totalCells - cellsUsed;
-
-  for (let day = 1; day <= remainingCells; day++) {
-    html += `<div class="calendar-day-small other-month">${day}</div>`;
-  }
-
-  calendarGrid.innerHTML = html;
-}
-
-// Change month
-function changeMonth(direction) {
-  currentMonth += direction;
-  if (currentMonth > 12) {
-    currentMonth = 1;
-    currentYear++;
-  } else if (currentMonth < 1) {
-    currentMonth = 12;
-    currentYear--;
-  }
-  renderCalendar();
-}
-
-// Toggle blocked date
-function toggleBlockedDate(dateKey) {
-  if (blockedDates.has(dateKey)) {
-    blockedDates.delete(dateKey);
-  } else {
-    blockedDates.add(dateKey);
-  }
-  renderCalendar();
-}
+// Calendar functions removed - blocked dates feature no longer needed
 
 // Initialize form handlers
 function initFormHandlers() {
@@ -247,13 +150,29 @@ function initFormHandlers() {
   // Preview button
   const previewBtn = document.querySelector(".btn-preview");
   if (previewBtn) {
-    previewBtn.addEventListener("click", previewListing);
+    previewBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      previewListing();
+    });
+    // Also make it accessible globally
+    window.previewListing = previewListing;
+    console.log("Preview button initialized");
+  } else {
+    console.error("Preview button not found!");
   }
 
   // Publish button
   const publishBtn = document.querySelector(".btn-publish");
   if (publishBtn) {
-    publishBtn.addEventListener("click", publishListing);
+    publishBtn.addEventListener("click", async function (e) {
+      e.preventDefault();
+      await publishListing();
+    });
+    // Also make it accessible globally
+    window.publishListing = publishListing;
+    console.log("Publish button initialized");
+  } else {
+    console.error("Publish button not found!");
   }
 
   // Verify Ghana Card button
@@ -274,16 +193,26 @@ function saveDraft() {
 
 // Preview listing
 function previewListing() {
-  const formData = collectFormData();
+  try {
+    console.log("Preview button clicked");
+    const formData = collectFormData();
 
-  // Populate preview modal with form data
-  populatePreview(formData);
+    // Populate preview modal with form data
+    populatePreview(formData);
 
-  // Show preview modal
-  const modal = document.getElementById("previewModal");
-  if (modal) {
-    modal.style.display = "flex";
-    document.body.style.overflow = "hidden"; // Prevent background scrolling
+    // Show preview modal
+    const modal = document.getElementById("previewModal");
+    if (modal) {
+      modal.style.display = "flex";
+      document.body.style.overflow = "hidden"; // Prevent background scrolling
+      console.log("Preview modal displayed");
+    } else {
+      console.error("Preview modal not found!");
+      alert("Preview modal not found. Please check the page structure.");
+    }
+  } catch (error) {
+    console.error("Error in previewListing:", error);
+    alert("Error showing preview: " + (error.message || "Unknown error"));
   }
 }
 
@@ -310,17 +239,7 @@ function populatePreview(formData) {
       categoryLabels[formData.category] || formData.category || "Category";
   }
 
-  const previewCondition = document.getElementById("previewCondition");
-  if (previewCondition) {
-    const conditionLabels = {
-      "like-new": "Like New",
-      excellent: "Excellent",
-      good: "Good",
-      fair: "Fair",
-    };
-    previewCondition.textContent =
-      conditionLabels[formData.condition] || formData.condition || "Condition";
-  }
+  // Condition field removed
 
   // Location
   const previewLocation = document.getElementById("previewLocation");
@@ -441,14 +360,20 @@ function closePreview() {
   }
 }
 
+// Make closePreview globally accessible
+window.closePreview = closePreview;
+
 // Close preview and publish
-function closePreviewAndPublish() {
+async function closePreviewAndPublish() {
   closePreview();
   // Small delay to allow modal to close
-  setTimeout(() => {
-    publishListing();
+  setTimeout(async () => {
+    await publishListing();
   }, 300);
 }
+
+// Make closePreviewAndPublish globally accessible
+window.closePreviewAndPublish = closePreviewAndPublish;
 
 // Initialize preview modal event listeners
 function initPreviewModal() {
@@ -474,20 +399,169 @@ function initPreviewModal() {
 }
 
 // Publish listing
-function publishListing() {
+async function publishListing() {
   // Validate form
   if (!validateForm()) {
     return;
   }
 
   const formData = collectFormData();
-  console.log("Publishing listing:", formData);
 
-  // In real app, this would submit to backend
-  alert("Listing published successfully!");
+  // Check if editing existing listing
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId = urlParams.get("edit");
+  const isEdit = editId !== null;
 
-  // Redirect to listings page
-  // window.location.href = "my-listings.html";
+  // Disable publish button
+  const publishBtn = document.querySelector(".btn-publish");
+  if (publishBtn) {
+    publishBtn.disabled = true;
+    publishBtn.textContent = "Publishing...";
+  }
+
+  // Submit to Supabase
+  await publishListingToSupabase(formData, isEdit, editId, publishBtn);
+}
+
+// Publish listing to Supabase
+async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      if (publishBtn) {
+        publishBtn.disabled = false;
+        publishBtn.textContent = "Publish Listing";
+      }
+      alert("Please sign in to publish listings.");
+      return;
+    }
+
+    // Map category to API format
+    const categoryMap = {
+      cameras: "Cameras",
+      lenses: "Cameras",
+      lighting: "Lighting",
+      audio: "Audio",
+      drones: "Drones",
+      accessories: "Accessories",
+    };
+    const apiCategory = categoryMap[formData.category.toLowerCase()] || "Other";
+
+    // Extract city from location
+    const locationParts = formData.pickupLocation.split(",");
+    const city =
+      locationParts.length > 1
+        ? locationParts[locationParts.length - 2].trim()
+        : "Accra";
+
+    // Get primary image URL
+    const coverImage =
+      formData.images && formData.images.length > 0
+        ? formData.images.find((img) => img.isCover) || formData.images[0]
+        : null;
+
+    const equipmentData = {
+      name: formData.title,
+      category: apiCategory,
+      description: formData.description || "",
+      price_per_day: parseFloat(formData.dailyRate),
+      location: formData.pickupLocation,
+      city: city,
+      image_url: coverImage ? coverImage.url : null,
+      is_available: formData.activeListing ? true : false,
+      updated_at: new Date().toISOString(),
+    };
+
+    let equipmentId;
+
+    if (isEdit) {
+      // Verify ownership
+      const { data: existing } = await window.supabaseClient
+        .from("equipment")
+        .select("owner_id")
+        .eq("equipment_id", editId)
+        .single();
+
+      if (!existing || existing.owner_id !== userId) {
+        if (publishBtn) {
+          publishBtn.disabled = false;
+          publishBtn.textContent = "Publish Listing";
+        }
+        alert("You don't have permission to edit this listing.");
+        return;
+      }
+
+      // Update equipment
+      const { error: updateError } = await window.supabaseClient
+        .from("equipment")
+        .update(equipmentData)
+        .eq("equipment_id", editId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      equipmentId = parseInt(editId);
+
+      // Delete old images and add new ones
+      await window.supabaseClient
+        .from("equipment_images")
+        .delete()
+        .eq("equipment_id", equipmentId);
+    } else {
+      // Create new equipment
+      equipmentData.owner_id = userId;
+      delete equipmentData.updated_at; // Let database set created_at
+
+      const { data: newEquipment, error: createError } =
+        await window.supabaseClient
+          .from("equipment")
+          .insert(equipmentData)
+          .select()
+          .single();
+
+      if (createError) {
+        throw createError;
+      }
+
+      equipmentId = newEquipment.equipment_id;
+    }
+
+    // Add images to equipment_images table
+    if (formData.images && formData.images.length > 0) {
+      const imageRecords = formData.images.map((img, index) => ({
+        equipment_id: equipmentId,
+        image_url: img.url,
+        is_primary: index === 0 || img.isCover,
+      }));
+
+      const { error: imageError } = await window.supabaseClient
+        .from("equipment_images")
+        .insert(imageRecords);
+
+      if (imageError) {
+        console.error("Error saving images:", imageError);
+        // Don't fail the whole operation if images fail
+      }
+    }
+
+    if (publishBtn) {
+      publishBtn.disabled = false;
+      publishBtn.textContent = "Publish Listing";
+    }
+
+    alert("Listing " + (isEdit ? "updated" : "published") + " successfully!");
+
+    // Redirect to listings page
+    window.location.href = "my-listings.html";
+  } catch (error) {
+    if (publishBtn) {
+      publishBtn.disabled = false;
+      publishBtn.textContent = "Publish Listing";
+    }
+    console.error("Publish error:", error);
+    alert("Error: " + (error.message || "Failed to publish listing"));
+  }
 }
 
 // Verify Ghana Card
@@ -517,14 +591,12 @@ function collectFormData() {
   return {
     title: document.getElementById("listingTitle").value,
     category: document.getElementById("category").value,
-    condition: document.getElementById("condition").value,
     brand: document.getElementById("brand").value,
     model: document.getElementById("model").value,
     description: document.getElementById("description").value,
     dailyRate: document.getElementById("dailyRate").value,
     replacementValue: document.getElementById("replacementValue").value,
     pickupLocation: document.getElementById("pickupLocation").value,
-    blockedDates: Array.from(blockedDates),
     activeListing: document.getElementById("activeListing").checked,
     images: images,
   };

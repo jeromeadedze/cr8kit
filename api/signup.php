@@ -26,8 +26,8 @@ $fullName = isset($_POST['fullName']) ? sanitizeInput($_POST['fullName']) : '';
 $email = isset($_POST['email']) ? sanitizeInput($_POST['email']) : '';
 $phoneNumber = isset($_POST['phoneNumber']) ? sanitizeInput($_POST['phoneNumber']) : '';
 $password = isset($_POST['password']) ? $_POST['password'] : '';
-$role = isset($_POST['role']) ? sanitizeInput($_POST['role']) : 'renter';
-$termsAgreed = isset($_POST['termsAgreement']) ? true : false;
+$role = isset($_POST['role']) ? sanitizeInput($_POST['role']) : 'renter'; // Default to 'renter' if not provided
+$termsAgreed = true; // Terms checkbox was removed from UI, default to true
 
 // Validation errors array
 $errors = [];
@@ -70,14 +70,9 @@ if (empty($password)) {
     }
 }
 
-// Validate Role
+// Validate Role (default to 'renter' if not provided or invalid)
 if (!in_array($role, ['renter', 'owner'])) {
-    $errors['role'] = 'Invalid role selected';
-}
-
-// Validate Terms Agreement
-if (!$termsAgreed) {
-    $errors['terms'] = 'You must agree to the Terms & Conditions';
+    $role = 'renter'; // Default to renter instead of error
 }
 
 // If there are validation errors, return them

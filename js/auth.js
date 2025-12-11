@@ -215,7 +215,7 @@ function initSignInForm() {
   });
 
   // Form submission
-  signInForm.addEventListener("submit", function (e) {
+  signInForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const email = emailInput.value.trim();
@@ -247,59 +247,69 @@ function initSignInForm() {
       submitButton.classList.add("loading");
       submitButton.disabled = true;
 
-      // Prepare form data
-      const formData = new FormData();
-      formData.append("email", email);
-      formData.append("password", password);
-      formData.append(
-        "keepSignedIn",
-        document.getElementById("keepSignedIn").checked
-      );
+      try {
+        // Supabase Auth sign-in
+        const { data: authData, error: authError } =
+          await window.supabaseClient.auth.signInWithPassword({
+            email,
+            password,
+          });
 
-      // Make API call
-      fetch("api/login.php", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          // Reset button state
-          submitButton.classList.remove("loading");
-          submitButton.disabled = false;
+        // Reset button state
+        submitButton.classList.remove("loading");
+        submitButton.disabled = false;
 
-          if (data.success) {
-            // Clear any errors
-            clearError("email");
-            clearError("password");
-
-            // Show success message
-            alert("Login successful! Welcome back, " + data.data.name + "!");
-
-            // Redirect to dashboard
-            window.location.href = "dashboard.html";
-          } else {
-            // Handle errors
-            if (data.data && data.data.errors) {
-              const errors = data.data.errors;
-              if (errors.email) {
-                showError("email", errors.email);
-              }
-              if (errors.password) {
-                showError("password", errors.password);
-              }
+        if (authError) {
+          console.error("Sign-in error:", authError);
+          console.error("Error details:", JSON.stringify(authError, null, 2));
+          
+          // Show more specific error messages
+          let errorMessage = "Invalid email or password";
+          
+          if (authError.message) {
+            if (authError.message.includes("Email not confirmed") || 
+                authError.message.includes("email_not_confirmed")) {
+              errorMessage = "Please check your email and confirm your account before signing in. Or disable email confirmation in Supabase settings.";
+            } else if (authError.message.includes("Invalid login credentials") ||
+                       authError.message.includes("invalid_credentials")) {
+              errorMessage = "Invalid email or password. Please check your credentials.";
             } else {
-              alert("Error: " + data.message);
+              errorMessage = authError.message;
             }
           }
-        })
-        .catch((error) => {
-          // Reset button state
-          submitButton.classList.remove("loading");
-          submitButton.disabled = false;
+          
+          showError("email", errorMessage);
+          showError("password", "");
+          return;
+        }
 
-          console.error("Login error:", error);
-          alert("An error occurred. Please try again.");
-        });
+        // Fetch or create user profile in users table
+        const profile = await window.getOrCreateUserProfile(
+          email,
+          authData.user?.user_metadata?.fullName || "",
+          authData.user?.user_metadata?.phone || ""
+        );
+
+        if (!profile) {
+          alert("Could not load user profile. Please try again.");
+          return;
+        }
+
+        // Store profile in localStorage
+        localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
+
+        alert(
+          "Login successful! Welcome back, " +
+            (profile.full_name || email) +
+            "!"
+        );
+        window.location.href = "browse.html";
+      } catch (error) {
+        console.error("Login error:", error);
+        submitButton.classList.remove("loading");
+        submitButton.disabled = false;
+        alert("An error occurred. Please try again.");
+      }
     }
   });
 }
@@ -317,7 +327,6 @@ function initSignUpForm() {
   const emailInput = document.getElementById("signupEmail");
   const phoneInput = document.getElementById("phoneNumber");
   const passwordInput = document.getElementById("signupPassword");
-  const termsCheckbox = document.getElementById("termsAgreement");
 
   // Real-time validation for Full Name
   fullNameInput.addEventListener("blur", function () {
@@ -418,26 +427,17 @@ function initSignUpForm() {
     }
   });
 
-  // Terms checkbox validation
-  termsCheckbox.addEventListener("change", function () {
-    if (this.checked) {
-      clearError("terms");
-    } else {
-      showError("terms", "You must agree to the Terms & Conditions");
-    }
-  });
-
   // Form submission
-  signUpForm.addEventListener("submit", function (e) {
+  signUpForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const fullName = fullNameInput.value.trim();
     const email = emailInput.value.trim();
     const phone = phoneInput.value.trim();
     const password = passwordInput.value;
-    const role = signUpForm.querySelector('input[name="role"]:checked').value;
-    const termsAgreed = termsCheckbox.checked;
-    const keepSignedIn = document.getElementById("keepSignedInSignup").checked;
+    const role = "renter"; // Default role since role selection was removed
+    const termsAgreed = true; // Terms checkbox was removed, default to true
+    const keepSignedIn = false; // Keep signed in checkbox was removed, default to false
 
     let isValid = true;
 
@@ -494,95 +494,98 @@ function initSignUpForm() {
       }
     }
 
-    // Validate Terms
-    if (!termsAgreed) {
-      showError("terms", "You must agree to the Terms & Conditions");
-      isValid = false;
-    } else {
-      clearError("terms");
-    }
-
     if (isValid) {
       // Show loading state
       const submitButton = signUpForm.querySelector('button[type="submit"]');
       submitButton.classList.add("loading");
       submitButton.disabled = true;
 
-      // Prepare form data
-      const formData = new FormData();
-      formData.append("fullName", fullName);
-      formData.append("email", email);
-      formData.append("phoneNumber", phone);
-      formData.append("password", password);
-      formData.append("role", role);
-      formData.append("termsAgreement", termsAgreed);
-      formData.append("keepSignedIn", keepSignedIn);
+      try {
+        // Sign up with Supabase Auth
+        const { data: authData, error: authError } =
+          await window.supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName,
+                phone_number: phone,
+                role: role,
+              },
+            },
+          });
 
-      // Make API call
-      fetch("api/signup.php", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          // Reset button state
-          submitButton.classList.remove("loading");
-          submitButton.disabled = false;
+        // Reset button state
+        submitButton.classList.remove("loading");
+        submitButton.disabled = false;
 
-          if (data.success) {
-            // Clear all errors
-            clearError("fullName");
-            clearError("signupEmail");
-            clearError("phoneNumber");
-            clearError("signupPassword");
-            clearError("terms");
-
-            // Show success message
-            alert(
-              "Account created successfully! Welcome to Cr8Kit, " +
-                data.data.name +
-                "!"
-            );
-
-            // Redirect to dashboard
-            window.location.href = "dashboard.html";
+        if (authError) {
+          console.error("Signup error:", authError);
+          console.error("Error details:", JSON.stringify(authError, null, 2));
+          
+          // Handle specific Supabase errors
+          if (authError.message && authError.message.includes("already registered") || 
+              authError.message && authError.message.includes("already exists")) {
+            showError("signupEmail", "This email is already registered. Please sign in instead.");
+          } else if (authError.message && authError.message.includes("password")) {
+            showError("signupPassword", "Password does not meet requirements.");
+          } else if (authError.message) {
+            alert("Error: " + authError.message);
           } else {
-            // Handle errors
-            if (data.data && data.data.errors) {
-              const errors = data.data.errors;
-
-              // Display field-specific errors
-              if (errors.fullName) {
-                showError("fullName", errors.fullName);
-              }
-              if (errors.email) {
-                showError("signupEmail", errors.email);
-              }
-              if (errors.phoneNumber) {
-                showError("phoneNumber", errors.phoneNumber);
-              }
-              if (errors.password) {
-                showError("signupPassword", errors.password);
-              }
-              if (errors.role) {
-                alert("Error: " + errors.role);
-              }
-              if (errors.terms) {
-                showError("terms", errors.terms);
-              }
-            } else {
-              alert("Error: " + data.message);
-            }
+            alert("Error: " + JSON.stringify(authError));
           }
-        })
-        .catch((error) => {
-          // Reset button state
-          submitButton.classList.remove("loading");
-          submitButton.disabled = false;
+          return;
+        }
 
-          console.error("Signup error:", error);
-          alert("An error occurred. Please try again.");
-        });
+        if (!authData.user) {
+          alert("Account creation failed. Please try again.");
+          return;
+        }
+
+        // Create or update user profile in users table
+        const profile = await window.getOrCreateUserProfile(
+          email,
+          fullName,
+          phone,
+          role
+        );
+
+        if (!profile) {
+          alert("Account created but profile setup failed. Please contact support.");
+          return;
+        }
+
+        // Clear all errors
+        clearError("fullName");
+        clearError("signupEmail");
+        clearError("phoneNumber");
+        clearError("signupPassword");
+
+        // Store profile in localStorage
+        localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
+
+        // Show success message
+        alert(
+          "Account created successfully! Welcome to Cr8Kit, " +
+            fullName +
+            "!"
+        );
+
+        // Redirect to browse page
+        window.location.href = "browse.html";
+
+      } catch (error) {
+        // Reset button state
+        submitButton.classList.remove("loading");
+        submitButton.disabled = false;
+
+        console.error("Signup error:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        
+        // Show more detailed error message
+        const errorMessage = error.message || error.toString() || "An error occurred. Please try again.";
+        alert("Error: " + errorMessage + "\n\nCheck browser console (F12) for more details.");
+      }
     }
   });
 }
