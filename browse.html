@@ -71,7 +71,6 @@
                     type="checkbox"
                     class="category-checkbox"
                     value="Cameras"
-                    checked
                     onchange="applyFilters()"
                   />
                   <span>Cameras</span>
@@ -113,6 +112,18 @@
                   <span>Drones</span>
                 </label>
                 <span class="category-count">15</span>
+              </li>
+              <li class="category-item">
+                <label>
+                  <input
+                    type="checkbox"
+                    class="category-checkbox"
+                    id="favoritesFilter"
+                    value="favorites"
+                    onchange="applyFilters()"
+                  />
+                  <span>My Favorites</span>
+                </label>
               </li>
             </ul>
           </div>
@@ -208,26 +219,12 @@
         <div class="section-header">
           <div>
             <h2 class="section-title">Featured Equipment</h2>
-            <p class="section-subtitle">
-              Found <span id="equipmentCount">342</span> items available near
-              Accra.
-            </p>
           </div>
         </div>
 
         <div class="section-header">
           <div class="filter-tags" id="activeFilters">
-            <span class="filter-tag">
-              Category: Cameras
-              <span
-                class="filter-tag-close"
-                onclick="removeFilter('category', 'Cameras')"
-                >×</span
-              >
-            </span>
-            <button class="btn-clear" onclick="clearFilters()">
-              Clear All
-            </button>
+            <!-- Active filter tags will be dynamically added here -->
           </div>
           <select class="sort-select" id="sortSelect" onchange="applyFilters()">
             <option value="recommended">Sort by: Recommended</option>

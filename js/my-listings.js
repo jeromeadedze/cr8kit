@@ -4,6 +4,8 @@
  */
 
 let allListings = [];
+let pendingRequests = [];
+let currentFilter = "all";
 
 document.addEventListener("DOMContentLoaded", async function () {
   // Update user info (avatar)
@@ -16,6 +18,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   
   // Load listings from API (this will also update summary cards with real data)
   await loadListings();
+  
+  // Load pending requests
+  await loadPendingRequests();
   
   // Initialize listings page
   initListingsPage();
@@ -299,10 +304,63 @@ function initFilters() {
   });
 }
 
+// Load pending booking requests
+async function loadPendingRequests() {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) return;
+
+    const { data: requests, error } = await window.supabaseClient
+      .from("bookings")
+      .select(`
+        *,
+        equipment:equipment_id (
+          equipment_id,
+          name,
+          image_url,
+          category
+        ),
+        renter:renter_id (
+          user_id,
+          full_name,
+          email
+        )
+      `)
+      .eq("owner_id", userId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error loading requests:", error);
+      return;
+    }
+
+    pendingRequests = requests || [];
+    updateRequestsBadge(pendingRequests.length);
+  } catch (error) {
+    console.error("Error loading pending requests:", error);
+  }
+}
+
+// Update requests badge
+function updateRequestsBadge(count) {
+  const badge = document.getElementById("requestsBadge");
+  if (badge) {
+    if (count > 0) {
+      badge.textContent = count > 99 ? "99+" : count;
+      badge.style.display = "flex";
+    } else {
+      badge.style.display = "none";
+    }
+  }
+}
+
 // Apply filter (exposed globally)
 window.applyFilter = function(filter) {
+  currentFilter = filter;
   const listingCards = document.querySelectorAll(".booking-card");
   const filterButtons = document.querySelectorAll(".filter-btn");
+  const listingsContainer = document.querySelector('.booking-list');
 
   // Update active filter button
   filterButtons.forEach((btn) => {
@@ -312,26 +370,256 @@ window.applyFilter = function(filter) {
     }
   });
 
-  listingCards.forEach((card) => {
-    const status = card.getAttribute("data-status");
+  if (filter === "requests") {
+    // Show requests instead of listings
+    renderRequests();
+  } else {
+    // Re-render listings to show them again (in case we were on requests)
+    renderListings(allListings);
+    
+    // Apply filter to listings
+    const updatedCards = document.querySelectorAll(".booking-card");
+    updatedCards.forEach((card) => {
+      const status = card.getAttribute("data-status");
 
-    if (filter === "all") {
-      card.style.display = "flex";
-    } else if (filter === "active") {
-      card.style.display = status === "available" ? "flex" : "none";
-    } else if (filter === "booked") {
-      card.style.display = status === "rented" ? "flex" : "none";
-    } else if (filter === "drafts") {
-      card.style.display = status === "draft" ? "flex" : "none";
-    } else {
-      card.style.display = "flex";
-    }
-  });
+      if (filter === "all") {
+        card.style.display = "flex";
+      } else if (filter === "active") {
+        card.style.display = status === "available" ? "flex" : "none";
+      } else if (filter === "booked") {
+        card.style.display = status === "rented" ? "flex" : "none";
+      } else if (filter === "drafts") {
+        card.style.display = status === "draft" ? "flex" : "none";
+      } else {
+        card.style.display = "flex";
+      }
+    });
+  }
 };
+
+// Approve request with pickup details
+async function approveRequest(bookingId) {
+  try {
+    const request = pendingRequests.find(r => r.booking_id === bookingId);
+    if (!request) {
+      alert("Request not found.");
+      return;
+    }
+
+    // Create modal for pickup details
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+
+    modal.innerHTML = `
+      <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <h2 style="margin-bottom: 1.5rem; color: var(--text-dark);">Approve Booking Request</h2>
+        <form id="approveRequestForm">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-dark);">
+              Pickup Location <span style="color: var(--error-red);">*</span>
+            </label>
+            <input
+              type="text"
+              id="pickupLocation"
+              required
+              placeholder="Enter pickup address"
+              style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px;"
+            />
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-dark);">
+              Pickup Time <span style="color: var(--error-red);">*</span>
+            </label>
+            <input
+              type="text"
+              id="pickupTime"
+              required
+              placeholder="e.g., 10:00 AM or 2:00 PM"
+              style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px;"
+            />
+          </div>
+          <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button
+              type="button"
+              onclick="closeApproveModal()"
+              style="flex: 1; padding: 12px; background: var(--border-color); color: var(--text-dark); border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style="flex: 1; padding: 12px; background: var(--primary-orange); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"
+            >
+              Approve & Send
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle form submission
+    const form = modal.querySelector('#approveRequestForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const pickupLocation = document.getElementById('pickupLocation').value.trim();
+      const pickupTime = document.getElementById('pickupTime').value.trim();
+
+      if (!pickupLocation || !pickupTime) {
+        alert("Please fill in all required fields.");
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Processing...";
+
+      try {
+        const userId = await window.getCurrentUserId();
+        
+        // Update booking status
+        const { error: updateError } = await window.supabaseClient
+          .from("bookings")
+          .update({
+            status: "approved",
+            pickup_location: pickupLocation,
+            pickup_time: pickupTime,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("booking_id", bookingId);
+
+        if (updateError) throw updateError;
+
+        // Send email notification
+        await sendBookingApprovalEmail(request, pickupLocation, pickupTime);
+
+        alert("Booking approved! Pickup details have been sent to the renter's email.");
+        
+        // Remove modal
+        document.body.removeChild(modal);
+        
+        // Reload requests
+        await loadPendingRequests();
+        
+        // If we're on requests view, refresh it; otherwise just update badge
+        if (currentFilter === "requests") {
+          renderRequests();
+        }
+      } catch (error) {
+        console.error("Error approving request:", error);
+        alert("An error occurred. Please try again.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Approve & Send";
+      }
+    });
+
+    // Close modal on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeApproveModal();
+      }
+    });
+  } catch (error) {
+    console.error("Error in approveRequest:", error);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Close approve modal
+function closeApproveModal() {
+  const modal = document.querySelector('.modal-overlay');
+  if (modal) {
+    document.body.removeChild(modal);
+  }
+}
+
+// Reject request
+async function rejectRequest(bookingId) {
+  const reason = prompt("Please provide a reason for rejecting this booking (optional):");
+  if (reason === null) return; // User cancelled
+
+  if (!confirm("Are you sure you want to reject this booking request?")) {
+    return;
+  }
+
+  try {
+    const userId = await window.getCurrentUserId();
+    
+    const { error } = await window.supabaseClient
+      .from("bookings")
+      .update({
+        status: "cancelled",
+        cancellation_reason: reason || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) throw error;
+
+    alert("Booking request rejected.");
+    
+    // Reload requests
+    await loadPendingRequests();
+    
+    // If we're on requests view, refresh it; otherwise just update badge
+    if (currentFilter === "requests") {
+      renderRequests();
+    }
+  } catch (error) {
+    console.error("Error rejecting request:", error);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Send booking approval email
+async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
+  try {
+    const renter = booking.renter || {};
+    
+    // Create notification in database
+    if (renter.user_id) {
+      await window.supabaseClient.from("notifications").insert({
+        user_id: renter.user_id,
+        type: "booking_approved",
+        title: "Booking Approved",
+        message: `Your booking for ${booking.equipment?.name || "equipment"} has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
+        related_booking_id: booking.booking_id,
+      });
+    }
+
+    // TODO: Send actual email via Edge Function or email service
+    console.log("Booking approval email would be sent:", {
+      to: renter.email,
+      subject: `Booking Approved - ${booking.equipment?.name || "Equipment"}`,
+      pickupLocation,
+      pickupTime,
+    });
+  } catch (error) {
+    console.error("Error sending approval email:", error);
+    // Don't fail the approval if email fails
+  }
+}
 
 // Expose functions globally
 window.toggleListing = toggleListing;
 window.deleteListing = deleteListing;
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;
+window.closeApproveModal = closeApproveModal;
 
 // Toggle listing active status
 async function toggleListing(checkbox, event) {
@@ -466,7 +754,100 @@ async function deleteListing(equipmentId) {
   }
 }
 
+// Render booking requests
+function renderRequests() {
+  const listingsContainer = document.querySelector('.booking-list');
+  if (!listingsContainer) return;
+
+  if (pendingRequests.length === 0) {
+    listingsContainer.innerHTML = 
+      '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">No pending booking requests.</p>';
+    return;
+  }
+
+  listingsContainer.innerHTML = pendingRequests.map(request => createRequestCard(request)).join('');
+  
+  // Attach event listeners for approve/reject buttons
+  attachRequestEventListeners();
+}
+
+// Create request card HTML
+function createRequestCard(request) {
+  const equipment = request.equipment || {};
+  const renter = request.renter || {};
+  const imageUrl = equipment.image_url || 'https://via.placeholder.com/200x150?text=No+Image';
+  
+  const startDate = new Date(request.start_date).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+  const endDate = new Date(request.end_date).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  return `
+    <div class="booking-card" data-booking-id="${request.booking_id}">
+      <img
+        src="${imageUrl}"
+        alt="${equipment.name || 'Equipment'}"
+        class="booking-image"
+      />
+      <div class="booking-content">
+        <div class="booking-info">
+          <div class="booking-status">
+            <span class="status-dot pending"></span>
+            <span>Pending Request</span>
+          </div>
+          <div class="booking-id">Booking #${request.booking_number}</div>
+          <h3 class="booking-title">${equipment.name || 'Unknown Equipment'}</h3>
+          <p class="booking-description">
+            Request from: <strong>${renter.full_name || renter.email || 'Unknown'}</strong>
+          </p>
+          <div class="booking-meta">
+            <span><i class="fas fa-calendar"></i> ${startDate} - ${endDate}</span>
+            <span><i class="fas fa-clock"></i> ${request.total_days} ${request.total_days === 1 ? 'day' : 'days'}</span>
+          </div>
+        </div>
+        <div class="booking-actions">
+          <div class="booking-price">
+            <div class="price-amount">
+              GH₵ ${parseFloat(request.total_amount).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </div>
+            <div class="price-status pending">Awaiting Approval</div>
+          </div>
+          <div style="display: flex; gap: var(--spacing-xs);">
+            <button 
+              class="btn-list-item" 
+              style="padding: 8px 16px; font-size: 12px"
+              onclick="approveRequest(${request.booking_id})"
+            >
+              Approve
+            </button>
+            <button 
+              class="btn-cancel" 
+              onclick="rejectRequest(${request.booking_id})"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // Attach event listeners
 function attachListingEventListeners() {
+  // Event listeners are attached via onclick in HTML
+}
+
+// Attach request event listeners
+function attachRequestEventListeners() {
   // Event listeners are attached via onclick in HTML
 }

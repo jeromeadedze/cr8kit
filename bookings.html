@@ -119,6 +119,22 @@
           </button>
           <button
             class="filter-btn"
+            data-filter="requests"
+            id="requestsTab"
+            onclick="filterBookings('requests'); return false;"
+            style="display: none"
+          >
+            Requests
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="active"
+            onclick="filterBookings('active'); return false;"
+          >
+            Active
+          </button>
+          <button
+            class="filter-btn"
             data-filter="completed"
             onclick="filterBookings('completed'); return false;"
           >

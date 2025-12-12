@@ -61,7 +61,15 @@ async function loadBookings(filter = "all") {
     }
 
     // Apply status filter
-    if (filter !== "all") {
+    if (filter === "requests") {
+      // For owners, show pending requests
+      if (role === "owner") {
+        query = query.eq("status", "pending");
+      } else {
+        // For renters, requests tab doesn't apply
+        query = query.eq("status", "pending");
+      }
+    } else if (filter !== "all") {
       query = query.eq("status", filter);
     }
 
@@ -77,6 +85,9 @@ async function loadBookings(filter = "all") {
       booking_number: booking.booking_number,
       status: booking.status,
       payment_status: booking.payment_status,
+      return_status: booking.return_status || "not_returned",
+      pickup_location: booking.pickup_location || "",
+      pickup_time: booking.pickup_time || "",
       role: role,
       equipment: {
         name: booking.equipment?.name || "Unknown Equipment",
@@ -85,8 +96,14 @@ async function loadBookings(filter = "all") {
       },
       other_user:
         role === "owner"
-          ? { name: booking.renter?.full_name || "Unknown" }
-          : { name: booking.owner?.full_name || "Unknown" },
+          ? {
+              name: booking.renter?.full_name || "Unknown",
+              email: booking.renter?.email || "",
+            }
+          : {
+              name: booking.owner?.full_name || "Unknown",
+              email: booking.owner?.email || "",
+            },
       dates: {
         start: booking.start_date,
         end: booking.end_date,
@@ -120,8 +137,9 @@ async function loadBookings(filter = "all") {
         active_rentals: allBookingsForStats.filter(
           (b) => b.status === "active" || b.status === "approved"
         ).length,
-        pending_requests: allBookingsForStats.filter((b) => b.status === "pending")
-          .length,
+        pending_requests: allBookingsForStats.filter(
+          (b) => b.status === "pending"
+        ).length,
         total_spent: allBookingsForStats
           .filter((b) => b.payment_status === "paid")
           .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0),
@@ -180,17 +198,25 @@ function createBookingCard(booking) {
   // Get equipment image - validate URL format
   let imageUrl = booking.equipment?.image_url || "";
   const equipmentName = booking.equipment?.name || "Equipment";
-  
+
   // Validate URL - must start with http:// or https://
   if (!imageUrl || imageUrl.trim() === "") {
     // No image URL provided, use placeholder
-    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(equipmentName)}`;
-  } else if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("//")) {
+    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(
+      equipmentName
+    )}`;
+  } else if (
+    !imageUrl.startsWith("http://") &&
+    !imageUrl.startsWith("https://") &&
+    !imageUrl.startsWith("//")
+  ) {
     // If it's not a valid URL (might be a Cloudinary public_id or relative path), use placeholder
     // In production, you might want to construct Cloudinary URL here
-    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(equipmentName)}`;
+    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(
+      equipmentName
+    )}`;
   }
-  
+
   // Ensure imageUrl is properly encoded
   imageUrl = imageUrl.trim();
 
@@ -211,10 +237,14 @@ function createBookingCard(booking) {
 
   // Determine cancel button visibility
   let cancelButtonHtml = "";
-  const canCancel = (role === "renter" && (booking.status === "pending" || (booking.status === "approved" && booking.payment_status === "pending")));
-  
+  const canCancel =
+    role === "renter" &&
+    (booking.status === "pending" ||
+      (booking.status === "approved" && booking.payment_status === "pending"));
+
   if (canCancel) {
-    const cancelText = booking.status === "pending" ? "Cancel Request" : "Cancel";
+    const cancelText =
+      booking.status === "pending" ? "Cancel Request" : "Cancel";
     cancelButtonHtml = `<button class="btn-cancel-top" onclick="cancelBooking(${booking.id})">${cancelText}</button>`;
   }
 
@@ -228,11 +258,49 @@ function createBookingCard(booking) {
         </div>
       `;
     } else if (booking.status === "active") {
-      actionButtons = `
-        <div style="display: flex; gap: var(--spacing-xs);">
-          <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="completeBooking(${booking.id})">Mark Complete</button>
-        </div>
-      `;
+      // Check if renter has marked as returned
+      const returnStatus = booking.return_status || "not_returned";
+      if (returnStatus === "returned") {
+        // Owner needs to confirm return
+        actionButtons = `
+          <div style="display: flex; gap: var(--spacing-xs);">
+            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="confirmReturn(${booking.id})">Confirm Return</button>
+          </div>
+        `;
+      } else {
+        // Waiting for renter to return
+        actionButtons = `
+          <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
+            <i class="fas fa-clock"></i> Waiting for equipment return
+          </p>
+        `;
+      }
+    } else if (
+      booking.status === "approved" &&
+      booking.payment_status === "paid"
+    ) {
+      // Show pickup details if available
+      let pickupInfo = "";
+      if (booking.pickup_location || booking.pickup_time) {
+        pickupInfo = `
+          <div style="margin-top: var(--spacing-xs); padding: var(--spacing-xs); background: rgba(254, 116, 44, 0.05); border-radius: var(--radius-sm);">
+            <div style="font-size: 12px; font-weight: 600; color: var(--primary-orange); margin-bottom: 4px;">
+              <i class="fas fa-map-marker-alt"></i> Pickup Details
+            </div>
+            ${
+              booking.pickup_location
+                ? `<div style="font-size: 11px; color: var(--text-dark);">Location: ${booking.pickup_location}</div>`
+                : ""
+            }
+            ${
+              booking.pickup_time
+                ? `<div style="font-size: 11px; color: var(--text-dark);">Time: ${booking.pickup_time}</div>`
+                : ""
+            }
+          </div>
+        `;
+      }
+      actionButtons = pickupInfo;
     }
   } else {
     if (booking.status === "approved" && booking.payment_status === "pending") {
@@ -247,6 +315,31 @@ function createBookingCard(booking) {
           <i class="fas fa-info-circle"></i> Free cancellation
         </p>
       `;
+    } else if (
+      booking.status === "active" &&
+      booking.payment_status === "paid"
+    ) {
+      // Renter can mark equipment as returned
+      const returnStatus = booking.return_status || "not_returned";
+      if (returnStatus === "not_returned") {
+        actionButtons = `
+          <div style="display: flex; gap: var(--spacing-xs);">
+            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="markAsReturned(${booking.id})">Mark as Returned</button>
+          </div>
+        `;
+      } else if (returnStatus === "returned") {
+        actionButtons = `
+          <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
+            <i class="fas fa-check-circle"></i> Returned - Awaiting owner confirmation
+          </p>
+        `;
+      } else if (returnStatus === "confirmed") {
+        actionButtons = `
+          <p style="font-size: 12px; color: var(--success-green); margin-top: 8px;">
+            <i class="fas fa-check-circle"></i> Return confirmed by owner
+          </p>
+        `;
+      }
     }
   }
 
@@ -256,7 +349,9 @@ function createBookingCard(booking) {
     }" data-booking-id="${booking.id}">
       <img src="${imageUrl}" alt="${
     booking.equipment.name
-  }" class="booking-image" loading="lazy" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=${encodeURIComponent(booking.equipment.name || 'Equipment')}'" />
+  }" class="booking-image" loading="lazy" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=${encodeURIComponent(
+    booking.equipment.name || "Equipment"
+  )}'" />
       <div class="booking-content">
         <div class="booking-info">
           <div class="booking-header">
@@ -270,22 +365,51 @@ function createBookingCard(booking) {
           <div class="booking-details">
             <div class="booking-detail-item">
               <i class="fas fa-calendar"></i>
-              <span>${formatDate(booking.dates.start)} - ${formatDate(booking.dates.end)}</span>
+              <span>${formatDate(booking.dates.start)} - ${formatDate(
+    booking.dates.end
+  )}</span>
             </div>
             <div class="booking-detail-item">
               <i class="fas fa-user"></i>
-              <span>Owner: ${otherUserName}</span>
+              <span>${
+                role === "owner" ? "Renter" : "Owner"
+              }: ${otherUserName}</span>
             </div>
+            ${
+              booking.pickup_location &&
+              (booking.status === "approved" || booking.status === "active")
+                ? `
+            <div class="booking-detail-item" style="margin-top: var(--spacing-xs); padding: var(--spacing-xs); background: rgba(254, 116, 44, 0.05); border-radius: var(--radius-sm);">
+              <div style="font-size: 12px; font-weight: 600; color: var(--primary-orange); margin-bottom: 4px;">
+                <i class="fas fa-map-marker-alt"></i> Pickup Details
+              </div>
+              <div style="font-size: 11px; color: var(--text-dark);">${
+                booking.pickup_location
+              }</div>
+              ${
+                booking.pickup_time
+                  ? `<div style="font-size: 11px; color: var(--text-dark); margin-top: 2px;">Time: ${booking.pickup_time}</div>`
+                  : ""
+              }
+            </div>
+            `
+                : ""
+            }
           </div>
         </div>
         <div class="booking-actions">
           ${cancelButtonHtml}
           <div class="booking-price">
-            <div class="price-amount">GHC ${booking.pricing.total_amount.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}</div>
-            <div class="price-breakdown">${booking.dates.total_days} ${booking.dates.total_days === 1 ? "day" : "days"} x GHC ${booking.pricing.price_per_day.toLocaleString()}/day</div>
+            <div class="price-amount">GHC ${booking.pricing.total_amount.toLocaleString(
+              "en-US",
+              {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }
+            )}</div>
+            <div class="price-breakdown">${booking.dates.total_days} ${
+    booking.dates.total_days === 1 ? "day" : "days"
+  } x GHC ${booking.pricing.price_per_day.toLocaleString()}/day</div>
             ${paymentStatusHtml}
           </div>
           ${actionButtons}
@@ -348,12 +472,197 @@ window.filterBookings = function (status) {
   loadBookings(status);
 };
 
+// Mark equipment as returned (renter)
+async function markAsReturned(bookingId) {
+  if (
+    !confirm(
+      "Have you returned the equipment to the owner? This will notify them to confirm the return."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      alert("Please sign in to mark equipment as returned.");
+      return;
+    }
+
+    // Verify this is the renter's booking
+    const { data: booking } = await window.supabaseClient
+      .from("bookings")
+      .select("renter_id, status")
+      .eq("booking_id", bookingId)
+      .single();
+
+    if (!booking || booking.renter_id !== userId) {
+      alert("You don't have permission to mark this booking as returned.");
+      return;
+    }
+
+    if (booking.status !== "active") {
+      alert("Only active bookings can be marked as returned.");
+      return;
+    }
+
+    // Update return status
+    const { error } = await window.supabaseClient
+      .from("bookings")
+      .update({
+        return_status: "returned",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) {
+      throw error;
+    }
+
+    // Send notification email to owner
+    await sendReturnNotificationEmail(bookingId);
+
+    alert("Equipment marked as returned. Owner will be notified to confirm.");
+    loadBookings(currentFilter);
+  } catch (error) {
+    console.error("Error marking as returned:", error);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Confirm return (owner)
+async function confirmReturn(bookingId) {
+  if (
+    !confirm("Confirm that the equipment has been returned in good condition?")
+  ) {
+    return;
+  }
+
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      alert("Please sign in to confirm return.");
+      return;
+    }
+
+    // Verify this is the owner's booking
+    const { data: booking } = await window.supabaseClient
+      .from("bookings")
+      .select("owner_id, status, return_status")
+      .eq("booking_id", bookingId)
+      .single();
+
+    if (!booking || booking.owner_id !== userId) {
+      alert("You don't have permission to confirm this return.");
+      return;
+    }
+
+    if (booking.return_status !== "returned") {
+      alert("Equipment must be marked as returned by renter first.");
+      return;
+    }
+
+    // Update booking status
+    const { error } = await window.supabaseClient
+      .from("bookings")
+      .update({
+        return_status: "confirmed",
+        status: "completed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) {
+      throw error;
+    }
+
+    alert("Return confirmed! Booking marked as completed.");
+    loadBookings(currentFilter);
+  } catch (error) {
+    console.error("Error confirming return:", error);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Send booking approval email (placeholder - implement with your email service)
+async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
+  // TODO: Implement email sending
+  // You can use:
+  // - Supabase Edge Functions with Resend/SendGrid
+  // - Supabase Database Webhooks to trigger email service
+  // - Third-party service like Mailgun, SendGrid, etc.
+
+  console.log("Email notification would be sent:", {
+    to: booking.renter?.email,
+    subject: `Booking Approved - ${booking.equipment?.name || "Equipment"}`,
+    pickupLocation,
+    pickupTime,
+  });
+
+  // For now, create a notification in the database
+  try {
+    const { data: renter } = await window.supabaseClient
+      .from("users")
+      .select("user_id, email")
+      .eq("user_id", booking.renter_id)
+      .single();
+
+    if (renter) {
+      await window.supabaseClient.from("notifications").insert({
+        user_id: renter.user_id,
+        type: "booking_approved",
+        title: "Booking Approved",
+        message: `Your booking for ${
+          booking.equipment?.name || "equipment"
+        } has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
+        related_booking_id: booking.booking_id,
+      });
+    }
+  } catch (error) {
+    console.error("Error creating notification:", error);
+  }
+}
+
+// Send return notification email (placeholder)
+async function sendReturnNotificationEmail(bookingId) {
+  // TODO: Implement email sending
+  console.log(
+    "Return notification email would be sent for booking:",
+    bookingId
+  );
+
+  // Create notification for owner
+  try {
+    const { data: booking } = await window.supabaseClient
+      .from("bookings")
+      .select("owner_id, equipment:equipment_id(name)")
+      .eq("booking_id", bookingId)
+      .single();
+
+    if (booking) {
+      await window.supabaseClient.from("notifications").insert({
+        user_id: booking.owner_id,
+        type: "equipment_returned",
+        title: "Equipment Returned",
+        message: `Equipment ${
+          booking.equipment?.name || ""
+        } has been returned. Please confirm the return.`,
+        related_booking_id: bookingId,
+      });
+    }
+  } catch (error) {
+    console.error("Error creating notification:", error);
+  }
+}
+
 // Expose other functions globally
 window.approveBooking = approveBooking;
 window.rejectBooking = rejectBooking;
 window.cancelBooking = cancelBooking;
 window.payBooking = payBooking;
 window.loadOlderBookings = loadOlderBookings;
+window.markAsReturned = markAsReturned;
+window.confirmReturn = confirmReturn;
 
 // Complete booking (owner only)
 async function completeBooking(bookingId) {
@@ -361,18 +670,84 @@ async function completeBooking(bookingId) {
   updateBookingStatus(bookingId, "completed");
 }
 
-// Approve booking (owner only)
-function approveBooking(bookingId) {
-  if (!confirm("Approve this booking request?")) return;
+// Approve booking (owner only) - with pickup details
+async function approveBooking(bookingId) {
+  // Get booking details first
+  try {
+    const { data: booking } = await window.supabaseClient
+      .from("bookings")
+      .select("*, equipment:equipment_id(name)")
+      .eq("booking_id", bookingId)
+      .single();
 
-  updateBookingStatus(bookingId, "approved");
+    if (!booking) {
+      alert("Booking not found.");
+      return;
+    }
+
+    // Prompt for pickup details
+    const pickupLocation = prompt(
+      "Enter pickup location (address):",
+      booking.equipment?.location || ""
+    );
+    if (pickupLocation === null) return; // User cancelled
+
+    const pickupTime = prompt(
+      "Enter pickup time (e.g., '10:00 AM' or '2:00 PM'):",
+      "10:00 AM"
+    );
+    if (pickupTime === null) return; // User cancelled
+
+    if (!pickupLocation.trim() || !pickupTime.trim()) {
+      alert("Pickup location and time are required.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Approve this booking request?\n\nPickup Location: ${pickupLocation}\nPickup Time: ${pickupTime}`
+      )
+    ) {
+      return;
+    }
+
+    // Update booking with approval and pickup details
+    const userId = await window.getCurrentUserId();
+    const { error } = await window.supabaseClient
+      .from("bookings")
+      .update({
+        status: "approved",
+        pickup_location: pickupLocation.trim(),
+        pickup_time: pickupTime.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) {
+      throw error;
+    }
+
+    // Send email notification to renter (if email service is set up)
+    await sendBookingApprovalEmail(booking, pickupLocation, pickupTime);
+
+    alert("Booking approved! Renter has been notified with pickup details.");
+    loadBookings(currentFilter);
+  } catch (error) {
+    console.error("Error approving booking:", error);
+    alert("An error occurred. Please try again.");
+  }
 }
 
 // Reject booking (owner only)
 function rejectBooking(bookingId) {
+  const reason = prompt(
+    "Please provide a reason for rejecting this booking (optional):"
+  );
+  if (reason === null) return; // User cancelled
+
   if (!confirm("Reject this booking request?")) return;
 
-  updateBookingStatus(bookingId, "rejected");
+  updateBookingStatus(bookingId, "cancelled", reason);
 }
 
 // Cancel booking
@@ -383,7 +758,11 @@ function cancelBooking(bookingId) {
 }
 
 // Update booking status
-async function updateBookingStatus(bookingId, status) {
+async function updateBookingStatus(
+  bookingId,
+  status,
+  cancellationReason = null
+) {
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
@@ -436,12 +815,19 @@ async function updateBookingStatus(bookingId, status) {
     }
 
     // Update booking status
+    const updateData = {
+      status: status,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Add cancellation reason if provided
+    if (cancellationReason && cancellationReason.trim()) {
+      updateData.cancellation_reason = cancellationReason.trim();
+    }
+
     const { error } = await window.supabaseClient
       .from("bookings")
-      .update({
-        status: status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("booking_id", bookingId);
 
     if (error) {
@@ -568,10 +954,30 @@ function loadOlderBookings() {
 }
 
 // Initialize on page load
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   // Update user info (avatar)
   if (window.updateUserInfo) {
     window.updateUserInfo();
   }
+
+  // Show Requests tab only for owners
+  try {
+    const userId = await window.getCurrentUserId();
+    if (userId) {
+      const { data: user } = await window.supabaseClient
+        .from("users")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      const requestsTab = document.getElementById("requestsTab");
+      if (requestsTab && user?.role === "owner") {
+        requestsTab.style.display = "inline-block";
+      }
+    }
+  } catch (error) {
+    console.error("Error checking user role:", error);
+  }
+
   loadBookings("all");
 });

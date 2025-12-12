@@ -4,19 +4,66 @@
  */
 
 let currentCalendarDate = new Date(); // Track currently viewed month
-let selectedStartDate = null;         // Selected start date (Date object)
-let selectedEndDate = null;           // Selected end date (Date object)
-let bookedDates = [];                 // Array of objects { start: Date, end: Date }
-let equipmentId = null;               // Current equipment ID
-let pricePerDay = 0;                  // Equipment price per day
-let equipmentData = null;             // Full equipment data
+let selectedStartDate = null; // Selected start date (Date object)
+let selectedEndDate = null; // Selected end date (Date object)
+let bookedDates = []; // Array of objects { start: Date, end: Date }
+let equipmentId = null; // Current equipment ID
+let pricePerDay = 0; // Equipment price per day
+let equipmentData = null; // Full equipment data
+
+// Send booking request email to owner
+async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails) {
+  try {
+    // Get owner details
+    const { data: owner } = await window.supabaseClient
+      .from("users")
+      .select("email, full_name, user_id")
+      .eq("user_id", ownerId)
+      .single();
+
+    if (!owner) return;
+
+    // Get renter details
+    const userId = await window.getCurrentUserId();
+    const { data: renter } = await window.supabaseClient
+      .from("users")
+      .select("full_name, email")
+      .eq("user_id", userId)
+      .single();
+
+    // Create notification in database (notifications table must exist)
+    try {
+      await window.supabaseClient.from("notifications").insert({
+        user_id: ownerId,
+        type: "booking_request",
+        title: "New Booking Request",
+        message: `${renter?.full_name || "A renter"} has requested to book ${
+          bookingDetails.equipmentName
+        } from ${bookingDetails.startDate} to ${
+          bookingDetails.endDate
+        }. Total: GHS ${bookingDetails.totalAmount.toFixed(2)}`,
+        related_equipment_id: equipmentId,
+      });
+    } catch (notifError) {
+      // If notifications table doesn't exist yet, just log
+      console.log("Notifications table not available yet:", notifError);
+    }
+
+    // TODO: Send actual email via Edge Function or webhook
+    // For now, notification is created in database
+    console.log("Booking request notification created for owner:", owner.email);
+  } catch (error) {
+    console.error("Error sending booking request notification:", error);
+    // Don't fail the booking if email fails
+  }
+}
 
 console.log("Equipment details script loaded successfully");
 
 // Wait for both DOM and Supabase to be ready
 document.addEventListener("DOMContentLoaded", function () {
   console.log("DOM loaded, waiting for Supabase...");
-  
+
   // Check if Supabase is already loaded
   if (window.supabaseClient) {
     console.log("Supabase already available");
@@ -27,10 +74,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // Wait for Supabase to be ready (check every 100ms)
   let attempts = 0;
   const maxAttempts = 50; // 5 seconds max
-  
+
   const checkSupabase = setInterval(() => {
     attempts++;
-    
+
     if (window.supabaseClient) {
       console.log("Supabase ready after", attempts * 100, "ms");
       clearInterval(checkSupabase);
@@ -60,7 +107,7 @@ function initializePage() {
 
   // Get equipment ID from URL
   const urlParams = new URLSearchParams(window.location.search);
-  equipmentId = urlParams.get('id');
+  equipmentId = urlParams.get("id");
 
   if (!equipmentId) {
     console.error("Equipment ID not found in URL");
@@ -80,13 +127,15 @@ function initializePage() {
   // Convert to integer if it's a string
   equipmentId = parseInt(equipmentId);
   if (isNaN(equipmentId)) {
-    console.error("Invalid equipment ID:", urlParams.get('id'));
+    console.error("Invalid equipment ID:", urlParams.get("id"));
     const container = document.querySelector(".page-container");
     if (container) {
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem 2rem;">
           <h1 style="color: var(--error-red); margin-bottom: 1rem;">Invalid Equipment ID</h1>
-          <p style="color: var(--text-gray); margin-bottom: 2rem;">The equipment ID "${urlParams.get('id')}" is not valid.</p>
+          <p style="color: var(--text-gray); margin-bottom: 2rem;">The equipment ID "${urlParams.get(
+            "id"
+          )}" is not valid.</p>
           <a href="browse.html" class="btn-primary" style="text-decoration: none; display: inline-block;">Browse Equipment</a>
         </div>
       `;
@@ -111,9 +160,9 @@ function initializePage() {
   const endInput = document.getElementById("endDateInput");
   if (startInput) startInput.value = "";
   if (endInput) endInput.value = "";
-  
+
   // Update price display to 0/empty initially
-  if (typeof updateBreakdownDisplay === 'function') {
+  if (typeof updateBreakdownDisplay === "function") {
     updateBreakdownDisplay(0, 0, 0, 0);
   }
 }
@@ -140,7 +189,9 @@ async function loadEquipmentDetails() {
     // Check if Supabase client is available
     if (!window.supabaseClient) {
       console.error("Supabase client not initialized");
-      throw new Error("Database connection not available. Please refresh the page.");
+      throw new Error(
+        "Database connection not available. Please refresh the page."
+      );
     }
 
     // Show loading state
@@ -163,9 +214,9 @@ async function loadEquipmentDetails() {
       console.error("Error message:", error.message);
       console.error("Error details:", error.details);
       console.error("Error hint:", error.hint);
-      
+
       // If it's a "not found" error, show appropriate message
-      if (error.code === 'PGRST116' || error.message?.includes('No rows')) {
+      if (error.code === "PGRST116" || error.message?.includes("No rows")) {
         const container = document.querySelector(".page-container");
         if (container) {
           container.innerHTML = `
@@ -178,7 +229,7 @@ async function loadEquipmentDetails() {
         }
         return;
       }
-      
+
       throw error;
     }
 
@@ -240,18 +291,29 @@ async function loadEquipmentDetails() {
     // Update location
     const locationEl = document.querySelector(".product-location");
     if (locationEl) {
-      const locationText = equipment.city 
-        ? `${equipment.city}${equipment.location ? ', ' + equipment.location : ''}`
-        : (equipment.location || 'Location not specified');
+      const locationText = equipment.city
+        ? `${equipment.city}${
+            equipment.location ? ", " + equipment.location : ""
+          }`
+        : equipment.location || "Location not specified";
       locationEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${locationText}`;
     }
 
     // Update location in location section
-    const locationSectionText = document.querySelector(".info-section .section-text");
-    if (locationSectionText && locationSectionText.closest('.info-section').querySelector('.section-heading')?.textContent === 'Location') {
-      locationSectionText.textContent = equipment.city 
-        ? `${equipment.city}${equipment.location ? ', ' + equipment.location : ''}`
-        : (equipment.location || 'Location not specified');
+    const locationSectionText = document.querySelector(
+      ".info-section .section-text"
+    );
+    if (
+      locationSectionText &&
+      locationSectionText
+        .closest(".info-section")
+        .querySelector(".section-heading")?.textContent === "Location"
+    ) {
+      locationSectionText.textContent = equipment.city
+        ? `${equipment.city}${
+            equipment.location ? ", " + equipment.location : ""
+          }`
+        : equipment.location || "Location not specified";
     }
 
     // Update verified badge - show only if verified
@@ -278,11 +340,16 @@ async function loadEquipmentDetails() {
 
     // Update description
     const descriptionEl = document.querySelector(".section-text");
-    if (descriptionEl && descriptionEl.closest('.info-section').querySelector('.section-heading')?.textContent === 'About this gear') {
+    if (
+      descriptionEl &&
+      descriptionEl.closest(".info-section").querySelector(".section-heading")
+        ?.textContent === "About this gear"
+    ) {
       if (equipment.description) {
         descriptionEl.textContent = equipment.description;
       } else {
-        descriptionEl.textContent = "No description available for this equipment.";
+        descriptionEl.textContent =
+          "No description available for this equipment.";
       }
     }
 
@@ -304,14 +371,16 @@ async function loadEquipmentDetails() {
     if (ownerInfo) {
       const hostName = document.querySelector(".host-name");
       if (hostName) {
-        hostName.textContent = `Hosted by ${ownerInfo.full_name || 'Unknown'}`;
+        hostName.textContent = `Hosted by ${ownerInfo.full_name || "Unknown"}`;
       }
       const hostAvatar = document.querySelector(".host-avatar");
       if (hostAvatar) {
-        hostAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ownerInfo.full_name || ownerInfo.email || 'User')}&background=fe742c&color=fff&size=60`;
-        hostAvatar.alt = ownerInfo.full_name || 'Owner';
+        hostAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          ownerInfo.full_name || ownerInfo.email || "User"
+        )}&background=fe742c&color=fff&size=60`;
+        hostAvatar.alt = ownerInfo.full_name || "Owner";
       }
-      
+
       // Update host meta (member since)
       const hostMeta = document.querySelector(".host-meta");
       if (hostMeta) {
@@ -333,14 +402,18 @@ async function loadEquipmentDetails() {
     // Update price
     const priceEl = document.querySelector(".price-per-day");
     if (priceEl) {
-      priceEl.innerHTML = `GHC ${pricePerDay.toFixed(2)} <span class="price-unit">/ day</span>`;
+      priceEl.innerHTML = `GHC ${pricePerDay.toFixed(
+        2
+      )} <span class="price-unit">/ day</span>`;
     }
 
     // Update reviews count
     const reviewCount = document.querySelector(".review-count");
     if (reviewCount) {
       const count = equipment.total_rentals || 0;
-      reviewCount.textContent = `(${count} ${count === 1 ? 'review' : 'reviews'})`;
+      reviewCount.textContent = `(${count} ${
+        count === 1 ? "review" : "reviews"
+      })`;
     }
 
     // Update reviews rating
@@ -350,13 +423,16 @@ async function loadEquipmentDetails() {
     }
 
     // Update reviews section
-    const reviewsSection = document.querySelector(".info-section:has(.reviews-header)");
+    const reviewsSection = document.querySelector(
+      ".info-section:has(.reviews-header)"
+    );
     const reviewsContainer = document.getElementById("reviewsContainer");
-    
+
     if (reviewsSection) {
       // Hide any hardcoded review cards
-      const hardcodedReviewCards = reviewsSection.querySelectorAll(".review-card");
-      hardcodedReviewCards.forEach(card => {
+      const hardcodedReviewCards =
+        reviewsSection.querySelectorAll(".review-card");
+      hardcodedReviewCards.forEach((card) => {
         if (!card.closest("#reviewsContainer")) {
           card.style.display = "none";
         }
@@ -365,7 +441,8 @@ async function loadEquipmentDetails() {
       if (!equipment.total_rentals || equipment.total_rentals === 0) {
         // No reviews
         if (reviewsContainer) {
-          reviewsContainer.innerHTML = '<p style="color: var(--text-gray); padding: 1rem 0;">No reviews yet. Be the first to review this equipment!</p>';
+          reviewsContainer.innerHTML =
+            '<p style="color: var(--text-gray); padding: 1rem 0;">No reviews yet. Be the first to review this equipment!</p>';
         }
         const showAllBtn = reviewsSection.querySelector(".btn-secondary");
         if (showAllBtn) {
@@ -377,7 +454,8 @@ async function loadEquipmentDetails() {
       } else {
         // Has reviews
         if (reviewsContainer) {
-          reviewsContainer.innerHTML = '<p style="color: var(--text-gray); padding: 1rem 0;">Loading reviews...</p>';
+          reviewsContainer.innerHTML =
+            '<p style="color: var(--text-gray); padding: 1rem 0;">Loading reviews...</p>';
         }
         const showAllBtn = reviewsSection.querySelector(".btn-secondary");
         if (showAllBtn) {
@@ -392,8 +470,10 @@ async function loadEquipmentDetails() {
     // Hide kit list container if no kit info in description
     const kitListContainer = document.getElementById("kitListContainer");
     if (kitListContainer) {
-      if (equipment.description?.toLowerCase().includes('kit includes') || 
-          equipment.description?.toLowerCase().includes('includes:')) {
+      if (
+        equipment.description?.toLowerCase().includes("kit includes") ||
+        equipment.description?.toLowerCase().includes("includes:")
+      ) {
         kitListContainer.style.display = "block";
       } else {
         kitListContainer.style.display = "none";
@@ -408,42 +488,47 @@ async function loadEquipmentDetails() {
 
     // Hide hardcoded review cards - they'll be replaced with dynamic ones if available
     const reviewCards = document.querySelectorAll(".review-card");
-    reviewCards.forEach(card => {
+    reviewCards.forEach((card) => {
       if (card.closest("#reviewsContainer") === null) {
         card.style.display = "none";
       }
     });
-
   } catch (error) {
     console.error("Error loading equipment details:", error);
     console.error("Error details:", {
       message: error.message,
       code: error.code,
       details: error.details,
-      hint: error.hint
+      hint: error.hint,
     });
-    
+
     const container = document.querySelector(".page-container");
     if (container) {
-      let errorMessage = 'Failed to load equipment details. Please try again.';
-      
-      if (error.code === 'PGRST116') {
-        errorMessage = 'Equipment not found. The item may have been removed.';
+      let errorMessage = "Failed to load equipment details. Please try again.";
+
+      if (error.code === "PGRST116") {
+        errorMessage = "Equipment not found. The item may have been removed.";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       container.innerHTML = `
         <div style="text-align: center; padding: 4rem 2rem;">
           <h1 style="color: var(--error-red); margin-bottom: 1rem;">Error Loading Equipment</h1>
           <p style="color: var(--text-gray); margin-bottom: 1rem;">${errorMessage}</p>
-          <p style="color: var(--text-gray); font-size: 14px; margin-bottom: 2rem;">Error Code: ${error.code || 'Unknown'}</p>
+          <p style="color: var(--text-gray); font-size: 14px; margin-bottom: 2rem;">Error Code: ${
+            error.code || "Unknown"
+          }</p>
           <a href="browse.html" class="btn-primary" style="text-decoration: none; display: inline-block;">Browse Equipment</a>
         </div>
       `;
     }
     if (window.showToast) {
-      window.showToast("Failed to load equipment details: " + (error.message || "Unknown error"), "error");
+      window.showToast(
+        "Failed to load equipment details: " +
+          (error.message || "Unknown error"),
+        "error"
+      );
     }
   }
 }
@@ -462,9 +547,12 @@ function updateInputsAndPrice() {
 
   // Update price breakdown
   if (selectedStartDate && selectedEndDate) {
-    const days = Math.round((selectedEndDate - selectedStartDate) / (1000 * 60 * 60 * 24)) + 1;
+    const days =
+      Math.round(
+        (selectedEndDate - selectedStartDate) / (1000 * 60 * 60 * 24)
+      ) + 1;
     const basePrice = pricePerDay * days;
-    const serviceFee = basePrice * 0.10; // 10% service fee
+    const serviceFee = basePrice * 0.1; // 10% service fee
     const insurance = basePrice * 0.05; // 5% insurance
     const total = basePrice + serviceFee + insurance;
 
@@ -476,8 +564,8 @@ function updateInputsAndPrice() {
 
 // Format date for input field (MM/DD/YYYY)
 function formatDateInput(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   const year = date.getFullYear();
   return `${month}/${day}/${year}`;
 }
@@ -498,7 +586,9 @@ function updateBreakdownDisplay(days, basePrice, serviceFee, insurance, total) {
 
   breakdown.innerHTML = `
     <div class="breakdown-row">
-      <span>GHC ${pricePerDay.toFixed(2)} x ${days} ${days === 1 ? 'day' : 'days'}</span>
+      <span>GHC ${pricePerDay.toFixed(2)} x ${days} ${
+    days === 1 ? "day" : "days"
+  }</span>
       <span>GHC ${basePrice.toFixed(2)}</span>
     </div>
     <div class="breakdown-row">
@@ -530,14 +620,13 @@ async function fetchAvailability() {
 
     if (error) throw error;
 
-    bookedDates = (bookings || []).map(b => ({
+    bookedDates = (bookings || []).map((b) => ({
       start: new Date(b.start_date),
-      end: new Date(b.end_date)
+      end: new Date(b.end_date),
     }));
-    
+
     // Re-render calendar with new data
     renderCalendar();
-
   } catch (error) {
     console.error("Error fetching availability:", error);
   }
@@ -566,10 +655,11 @@ function initCalendar() {
   // Input click listeners
   const startInput = document.getElementById("startDateInput");
   const endInput = document.getElementById("endDateInput");
-  
+
   const scrollHandler = () => {
-      const calendar = document.querySelector(".calendar-container");
-      if (calendar) calendar.scrollIntoView({ behavior: "smooth", block: "center" });
+    const calendar = document.querySelector(".calendar-container");
+    if (calendar)
+      calendar.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   if (startInput) startInput.addEventListener("click", scrollHandler);
@@ -585,14 +675,16 @@ function renderCalendar() {
   if (!grid || !monthLabel) return;
 
   // Update header
-  const monthName = currentCalendarDate.toLocaleString('default', { month: 'long' });
+  const monthName = currentCalendarDate.toLocaleString("default", {
+    month: "long",
+  });
   const year = currentCalendarDate.getFullYear();
   monthLabel.textContent = `${monthName} ${year}`;
 
   // Clear existing days (keep headers)
   const headers = grid.querySelectorAll(".calendar-day-header");
   grid.innerHTML = "";
-  headers.forEach(h => grid.appendChild(h));
+  headers.forEach((h) => grid.appendChild(h));
 
   // Calendar logic
   const firstDayOfMonth = new Date(year, currentCalendarDate.getMonth(), 1);
@@ -622,9 +714,11 @@ function renderCalendar() {
     let isBooked = false;
     for (const range of bookedDates) {
       // Normalize range dates to midnight for comparison
-      const rStart = new Date(range.start); rStart.setHours(0,0,0,0);
-      const rEnd = new Date(range.end); rEnd.setHours(0,0,0,0);
-      
+      const rStart = new Date(range.start);
+      rStart.setHours(0, 0, 0, 0);
+      const rEnd = new Date(range.end);
+      rEnd.setHours(0, 0, 0, 0);
+
       if (date >= rStart && date <= rEnd) {
         isBooked = true;
         break;
@@ -637,11 +731,11 @@ function renderCalendar() {
       el.style.opacity = "0.4";
       el.style.backgroundColor = "#eee";
       el.style.cursor = "not-allowed";
-      if(isBooked) {
-          el.title = "Booked";
-          el.style.backgroundColor = "rgba(254, 116, 44, 0.1)"; // Light orange tint
+      if (isBooked) {
+        el.title = "Booked";
+        el.style.backgroundColor = "rgba(254, 116, 44, 0.1)"; // Light orange tint
       } else {
-          el.title = "Past date";
+        el.title = "Past date";
       }
     } else {
       // Click handler for valid days
@@ -655,7 +749,12 @@ function renderCalendar() {
     if (selectedEndDate && date.getTime() === selectedEndDate.getTime()) {
       el.classList.add("selected", "end");
     }
-    if (selectedStartDate && selectedEndDate && date > selectedStartDate && date < selectedEndDate) {
+    if (
+      selectedStartDate &&
+      selectedEndDate &&
+      date > selectedStartDate &&
+      date < selectedEndDate
+    ) {
       el.classList.add("selected");
     }
 
@@ -666,7 +765,11 @@ function renderCalendar() {
 // Handle date selection
 function handleDateClick(date) {
   // If clicking start again or resetting
-  if (!selectedStartDate || (selectedStartDate && selectedEndDate) || date < selectedStartDate) {
+  if (
+    !selectedStartDate ||
+    (selectedStartDate && selectedEndDate) ||
+    date < selectedStartDate
+  ) {
     selectedStartDate = date;
     selectedEndDate = null;
   } else if (date.getTime() === selectedStartDate.getTime()) {
@@ -677,17 +780,23 @@ function handleDateClick(date) {
     // Check for booked dates in range
     let hasConflict = false;
     for (const range of bookedDates) {
-        const rStart = new Date(range.start); rStart.setHours(0,0,0,0);
-        if (range.start >= selectedStartDate && range.start <= date) {
-            hasConflict = true;
-            break;
-        }
+      const rStart = new Date(range.start);
+      rStart.setHours(0, 0, 0, 0);
+      if (range.start >= selectedStartDate && range.start <= date) {
+        hasConflict = true;
+        break;
+      }
     }
 
-    if(hasConflict) {
-        if(window.showToast) window.showToast("Selection includes booked dates. Please choose another range.", "error");
-        else alert("Selection includes booked dates. Please choose another range.");
-        return;
+    if (hasConflict) {
+      if (window.showToast)
+        window.showToast(
+          "Selection includes booked dates. Please choose another range.",
+          "error"
+        );
+      else
+        alert("Selection includes booked dates. Please choose another range.");
+      return;
     }
 
     selectedEndDate = date;
@@ -703,80 +812,116 @@ function handleDateClick(date) {
 // Init Booking Form
 function initBookingForm() {
   const btn = document.querySelector(".btn-book-request");
-  if(!btn) return;
+  if (!btn) return;
 
   btn.addEventListener("click", async () => {
-      if(!selectedStartDate || !selectedEndDate) {
-          if(window.showToast) window.showToast("Please select a valid date range.", "error");
-          else alert("Please select a valid date range.");
-          return;
-      }
-      
-      const userId = await window.getCurrentUserId();
-      if(!userId) {
-          if(window.showToast) window.showToast("Please sign in to book.", "error");
-          else alert("Please sign in to book.");
-          return;
-      }
+    if (!selectedStartDate || !selectedEndDate) {
+      if (window.showToast)
+        window.showToast("Please select a valid date range.", "error");
+      else alert("Please select a valid date range.");
+      return;
+    }
 
-      // Ensure price is loaded
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      if (window.showToast)
+        window.showToast("Please sign in to book.", "error");
+      else alert("Please sign in to book.");
+      return;
+    }
+
+    // Ensure price is loaded
+    if (!pricePerDay || pricePerDay === 0) {
+      // Try to reload equipment details
+      await loadEquipmentDetails();
       if (!pricePerDay || pricePerDay === 0) {
-          // Try to reload equipment details
-          await loadEquipmentDetails();
-          if (!pricePerDay || pricePerDay === 0) {
-              if(window.showToast) window.showToast("Equipment price not available. Please refresh the page.", "error");
-              else alert("Equipment price not available. Please refresh the page.");
-              return;
-          }
+        if (window.showToast)
+          window.showToast(
+            "Equipment price not available. Please refresh the page.",
+            "error"
+          );
+        else alert("Equipment price not available. Please refresh the page.");
+        return;
+      }
+    }
+
+    // Prepare Submission
+    const days =
+      Math.round(
+        (selectedEndDate - selectedStartDate) / (1000 * 60 * 60 * 24)
+      ) + 1;
+    const basePrice = pricePerDay * days;
+    const serviceFee = basePrice * 0.1; // 10% service fee
+    const insurance = basePrice * 0.05; // 5% insurance
+    const totalAmount = basePrice + serviceFee + insurance;
+
+    // Create Booking
+    try {
+      btn.disabled = true;
+      btn.textContent = "Requesting...";
+
+      // Get owner ID again to be safe
+      const { data: eq } = await window.supabaseClient
+        .from("equipment")
+        .select("owner_id")
+        .eq("equipment_id", equipmentId)
+        .single();
+
+      const { error } = await window.supabaseClient.from("bookings").insert({
+        renter_id: userId,
+        equipment_id: parseInt(equipmentId),
+        owner_id: eq.owner_id,
+        start_date: selectedStartDate.toISOString().split("T")[0],
+        end_date: selectedEndDate.toISOString().split("T")[0],
+        total_days: days,
+        price_per_day: pricePerDay,
+        total_amount: totalAmount,
+        status: "pending",
+        payment_status: "pending",
+        booking_number: "BK" + Date.now().toString().slice(-6),
+      });
+
+      if (error) throw error;
+
+      // Get booking number from the created booking
+      const { data: createdBooking } = await window.supabaseClient
+        .from("bookings")
+        .select("booking_id, booking_number")
+        .eq("renter_id", userId)
+        .eq("equipment_id", parseInt(equipmentId))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      // Send email notification to owner
+      if (createdBooking) {
+        await sendBookingRequestEmail(parseInt(equipmentId), eq.owner_id, {
+          equipmentName: equipmentData?.name || "Equipment",
+          startDate: selectedStartDate.toISOString().split("T")[0],
+          endDate: selectedEndDate.toISOString().split("T")[0],
+          totalDays: days,
+          totalAmount: totalAmount,
+          bookingNumber:
+            createdBooking.booking_number ||
+            "BK" + Date.now().toString().slice(-6),
+        });
       }
 
-      // Prepare Submission
-      const days = Math.round((selectedEndDate - selectedStartDate) / (1000 * 60 * 60 * 24)) + 1;
-      const basePrice = pricePerDay * days;
-      const serviceFee = basePrice * 0.10; // 10% service fee
-      const insurance = basePrice * 0.05; // 5% insurance
-      const totalAmount = basePrice + serviceFee + insurance;
+      if (window.showToast)
+        window.showToast("Booking requested successfully!", "success");
+      else alert("Booking requested successfully!");
 
-      // Create Booking
-      try {
-          btn.disabled = true;
-          btn.textContent = "Requesting...";
+      setTimeout(() => {
+        window.location.href = "bookings.html";
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      if (window.showToast)
+        window.showToast("Failed to book: " + e.message, "error");
+      else alert("Failed to book: " + e.message);
 
-          // Get owner ID again to be safe
-          const {data: eq} = await window.supabaseClient.from('equipment').select('owner_id').eq('equipment_id', equipmentId).single();
-          
-           const { error } = await window.supabaseClient
-            .from("bookings")
-            .insert({
-                renter_id: userId,
-                equipment_id: parseInt(equipmentId),
-                owner_id: eq.owner_id,
-                start_date: selectedStartDate.toISOString().split('T')[0],
-                end_date: selectedEndDate.toISOString().split('T')[0],
-                total_days: days,
-                price_per_day: pricePerDay,
-                total_amount: totalAmount,
-                status: "pending",
-                payment_status: "pending",
-                booking_number: "BK" + Date.now().toString().slice(-6)
-            });
-
-            if(error) throw error;
-
-            if(window.showToast) window.showToast("Booking requested successfully!", "success");
-            else alert("Booking requested successfully!");
-            
-            setTimeout(() => {
-                window.location.href = "bookings.html";
-            }, 1000);
-
-      } catch(e) {
-          console.error(e);
-          if(window.showToast) window.showToast("Failed to book: " + e.message, "error");
-          else alert("Failed to book: " + e.message);
-          
-          btn.disabled = false;
-          btn.textContent = "Request to Book";
-      }
+      btn.disabled = false;
+      btn.textContent = "Request to Book";
+    }
   });
 }

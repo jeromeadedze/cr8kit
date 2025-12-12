@@ -110,17 +110,26 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // Load equipment
-function loadEquipment() {
+async function loadEquipment() {
   if (isLoading) return;
 
   isLoading = true;
   const grid = document.getElementById("equipmentGrid");
 
+  // Load user's favorites
+  const userFavorites = await loadUserFavorites();
+
   // Get filter values
   const checkedCategories = Array.from(
     document.querySelectorAll(".category-checkbox:checked")
   ).map((cb) => cb.value);
-  const category = checkedCategories.length > 0 ? checkedCategories[0] : null;
+
+  // Separate favorites from regular categories
+  const favoritesFilter = checkedCategories.includes("favorites");
+  const regularCategories = checkedCategories.filter(
+    (cat) => cat !== "favorites"
+  );
+
   const minPrice = document.getElementById("minPriceSlider")?.value || 50;
   const maxPrice = document.getElementById("maxPriceSlider")?.value || 1200;
   const city = document.getElementById("locationFilter")?.value || "";
@@ -154,10 +163,14 @@ function loadEquipment() {
     .range((currentPage - 1) * 12, currentPage * 12 - 1);
 
   // Apply filters
-  if (checkedCategories.length > 0) {
-      query = query.in("category", checkedCategories);
+  // Only show available equipment
+  query = query.eq("is_available", true);
+
+  // Apply category filter (excluding favorites, which is handled separately)
+  if (regularCategories.length > 0) {
+    query = query.in("category", regularCategories);
   }
-  
+
   if (city) query = query.ilike("city", `%${city}%`);
   if (search) {
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
@@ -174,36 +187,47 @@ function loadEquipment() {
       }
 
       if (data && data.length > 0) {
-        data.forEach((item) => {
-          const normalized = {
-            id: item.equipment_id,
-            name: item.name,
-            category: item.category,
-            description: item.description,
-            price_per_day: item.price_per_day,
-            location: item.location,
-            city: item.city,
-            rating: item.rating,
-            total_rentals: item.total_rentals,
-            is_available: item.is_available,
-            image_url: item.image_url,
-            owner: item.owner ? {
-              id: item.owner.user_id,
-              name: item.owner.full_name || item.owner.email || 'Unknown',
-              email: item.owner.email
-            } : { id: item.owner_id, name: 'Unknown' },
-          };
-          const card = createEquipmentCard(normalized);
-          grid.appendChild(card);
-        });
+        // Filter by favorites if favorites filter is active
+        let filteredData = data;
+        if (favoritesFilter) {
+          filteredData = data.filter((item) =>
+            userFavorites.has(item.equipment_id)
+          );
+        }
 
-        const countEl = document.getElementById("equipmentCount");
-        if (countEl) {
-          countEl.textContent = data.length;
+        if (filteredData.length > 0) {
+          filteredData.forEach((item) => {
+            const normalized = {
+              id: item.equipment_id,
+              name: item.name,
+              category: item.category,
+              description: item.description,
+              price_per_day: item.price_per_day,
+              location: item.location,
+              city: item.city,
+              rating: item.rating,
+              total_rentals: item.total_rentals,
+              is_available: item.is_available,
+              image_url: item.image_url,
+              owner: item.owner
+                ? {
+                    id: item.owner.user_id,
+                    name: item.owner.full_name || item.owner.email || "Unknown",
+                    email: item.owner.email,
+                  }
+                : { id: item.owner_id, name: "Unknown" },
+              is_favorite: userFavorites.has(item.equipment_id),
+            };
+            const card = createEquipmentCard(normalized);
+            grid.appendChild(card);
+          });
+        } else if (favoritesFilter && currentPage === 1) {
+          grid.innerHTML =
+            '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray); grid-column: 1/-1;">No favorite equipment found. Start favoriting items to see them here!</p>';
         }
       } else {
-        if(currentPage === 1) {
-            grid.innerHTML =
+        if (currentPage === 1) {
+          grid.innerHTML =
             '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray); grid-column: 1/-1;">No equipment found matching your filters.</p>';
         }
       }
@@ -215,15 +239,15 @@ function loadEquipment() {
       // Otherwise showing sample data mixed with real data is confusing.
       // For now, let's just show the error in console or toast.
       if (currentPage === 1 && grid.innerHTML === "") {
-         // Maybe show empty state instead of sample data? 
-         // But sticking to original behavior of falling back to sample data for demo purposes might be desired.
-         // Let's keep sample data loading if it was purely empty.
-         if(sampleEquipment.length > 0) {
-             sampleEquipment.forEach((item) => {
-                const card = createEquipmentCard(item);
-                grid.appendChild(card);
-            });
-         }
+        // Maybe show empty state instead of sample data?
+        // But sticking to original behavior of falling back to sample data for demo purposes might be desired.
+        // Let's keep sample data loading if it was purely empty.
+        if (sampleEquipment.length > 0) {
+          sampleEquipment.forEach((item) => {
+            const card = createEquipmentCard(item);
+            grid.appendChild(card);
+          });
+        }
       }
       isLoading = false;
     });
@@ -248,9 +272,10 @@ function createEquipmentCard(item) {
   // Format location (API returns city, sample data has location)
   const location = item.location || `${item.city || "Accra"}`;
   // Get owner name - handle both object format (from API) and string/number format (from sample data)
-  const ownerName = typeof item.owner === 'object' && item.owner !== null 
-    ? (item.owner.name || item.owner.full_name || 'Unknown')
-    : (item.owner || 'Unknown');
+  const ownerName =
+    typeof item.owner === "object" && item.owner !== null
+      ? item.owner.name || item.owner.full_name || "Unknown"
+      : item.owner || "Unknown";
   const price = item.price_per_day || item.price || 0;
   const rating = item.rating || 0;
 
@@ -263,10 +288,10 @@ function createEquipmentCard(item) {
                 loading="lazy"
                 onerror="this.src='https://via.placeholder.com/280x200?text=No+Image'"
             />
-            <button class="card-favorite" onclick="event.stopPropagation(); toggleFavorite(${
-              item.id
-            })">
-                <i class="far fa-heart"></i>
+            <button class="card-favorite ${
+              item.is_favorite ? "active" : ""
+            }" onclick="event.stopPropagation(); toggleFavorite(${item.id})">
+                <i class="${item.is_favorite ? "fas" : "far"} fa-heart"></i>
             </button>
         </div>
         <div class="card-content">
@@ -388,27 +413,95 @@ function loadMoreEquipment() {
 }
 
 // Toggle favorite
-function toggleFavorite(id) {
+async function toggleFavorite(id) {
   const btn = event.currentTarget;
   const icon = btn.querySelector("i");
-  let action = '';
+  const isCurrentlyFavorite = icon.classList.contains("fas");
 
-  if (icon.classList.contains("far")) {
-    icon.classList.remove("far");
-    icon.classList.add("fas");
-    btn.classList.add("active");
-    action = 'Added to';
-  } else {
-    icon.classList.remove("fas");
-    icon.classList.add("far");
-    btn.classList.remove("active");
-    action = 'Removed from';
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      if (window.showToast) {
+        window.showToast("Please sign in to save favorites", "error");
+      } else {
+        alert("Please sign in to save favorites");
+      }
+      return;
+    }
+
+    if (isCurrentlyFavorite) {
+      // Remove from favorites
+      const { error } = await window.supabaseClient
+        .from("favorites")
+        .delete()
+        .eq("user_id", userId)
+        .eq("equipment_id", id);
+
+      if (error) throw error;
+
+      icon.classList.remove("fas");
+      icon.classList.add("far");
+      btn.classList.remove("active");
+
+      if (window.showToast) {
+        window.showToast("Removed from favorites", "success");
+      }
+    } else {
+      // Add to favorites
+      const { error } = await window.supabaseClient.from("favorites").insert({
+        user_id: userId,
+        equipment_id: id,
+      });
+
+      if (error) {
+        // If it's a unique constraint error, it's already favorited (shouldn't happen, but handle gracefully)
+        if (error.code === "23505") {
+          // Already exists, just update UI
+          icon.classList.remove("far");
+          icon.classList.add("fas");
+          btn.classList.add("active");
+          return;
+        }
+        throw error;
+      }
+
+      icon.classList.remove("far");
+      icon.classList.add("fas");
+      btn.classList.add("active");
+
+      if (window.showToast) {
+        window.showToast("Added to favorites", "success");
+      }
+    }
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
+    if (window.showToast) {
+      window.showToast("Failed to update favorite. Please try again.", "error");
+    } else {
+      alert("Failed to update favorite. Please try again.");
+    }
   }
+}
 
-  // Use new Toast
-  if(window.showToast) {
-      window.showToast(`${action} favorites`, 'success');
-  } else {
-      console.log(`${action} favorites:`, id);
+// Load user's favorites
+async function loadUserFavorites() {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) return new Set();
+
+    const { data: favorites, error } = await window.supabaseClient
+      .from("favorites")
+      .select("equipment_id")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error loading favorites:", error);
+      return new Set();
+    }
+
+    return new Set((favorites || []).map((f) => f.equipment_id));
+  } catch (error) {
+    console.error("Error loading favorites:", error);
+    return new Set();
   }
 }

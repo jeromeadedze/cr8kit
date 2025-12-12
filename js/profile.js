@@ -230,7 +230,11 @@ function updateProfileForm(profile) {
     phoneInput.value = profile.phone_number || "";
   }
 
-  // Bio is not in database yet, so leave default or empty
+  // Update bio
+  const bioInput = document.getElementById("bio");
+  if (bioInput) {
+    bioInput.value = profile.bio || "";
+  }
 }
 
 // Initialize profile page
@@ -289,14 +293,21 @@ async function savePersonalInfo() {
     const fullName = `${firstName} ${lastName}`.trim();
 
     // Update user profile in Supabase
+    const updateData = {
+      full_name: fullName,
+      email: email,
+      phone_number: phone,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Add bio if it exists in the database schema
+    if (bio) {
+      updateData.bio = bio;
+    }
+
     const { error } = await window.supabaseClient
       .from("users")
-      .update({
-        full_name: fullName,
-        email: email,
-        phone_number: phone,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("user_id", userId);
 
     if (error) {
@@ -308,6 +319,7 @@ async function savePersonalInfo() {
       full_name: fullName,
       email: email,
       phone_number: phone,
+      bio: bio,
     };
     const existingProfile = JSON.parse(
       localStorage.getItem("cr8kit_profile") || "{}"
