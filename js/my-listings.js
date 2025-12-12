@@ -504,8 +504,30 @@ async function approveRequest(bookingId) {
 
         if (updateError) throw updateError;
 
-        // Send email notification
-        await sendBookingApprovalEmail(request, pickupLocation, pickupTime);
+        // Fetch updated booking with all details for email
+        const { data: updatedBooking, error: fetchError } = await window.supabaseClient
+          .from("bookings")
+          .select(`
+            *,
+            equipment:equipment_id (
+              equipment_id,
+              name,
+              image_url,
+              category
+            ),
+            renter:renter_id (
+              user_id,
+              full_name,
+              email
+            )
+          `)
+          .eq("booking_id", bookingId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        // Send email notification with receipt details
+        await sendBookingApprovalEmail(updatedBooking, pickupLocation, pickupTime);
 
         alert("Booking approved! Pickup details have been sent to the renter's email.");
         
@@ -521,7 +543,8 @@ async function approveRequest(bookingId) {
         }
       } catch (error) {
         console.error("Error approving request:", error);
-        alert("An error occurred. Please try again.");
+        console.error("Error details:", error);
+        alert("An error occurred. Please try again. Error: " + (error.message || "Unknown error"));
         submitBtn.disabled = false;
         submitBtn.textContent = "Approve & Send";
       }
@@ -585,29 +608,203 @@ async function rejectRequest(bookingId) {
   }
 }
 
-// Send booking approval email
+// Send booking approval email with receipt
 async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
   try {
     const renter = booking.renter || {};
+    const equipment = booking.equipment || {};
     
-    // Create notification in database
-    if (renter.user_id) {
-      await window.supabaseClient.from("notifications").insert({
-        user_id: renter.user_id,
-        type: "booking_approved",
-        title: "Booking Approved",
-        message: `Your booking for ${booking.equipment?.name || "equipment"} has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
-        related_booking_id: booking.booking_id,
-      });
+    if (!renter.email) {
+      console.warn("No email address for renter, skipping email");
+      return;
     }
 
-    // TODO: Send actual email via Edge Function or email service
-    console.log("Booking approval email would be sent:", {
-      to: renter.email,
-      subject: `Booking Approved - ${booking.equipment?.name || "Equipment"}`,
-      pickupLocation,
-      pickupTime,
+    // Format dates
+    const startDate = new Date(booking.start_date).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     });
+    const endDate = new Date(booking.end_date).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    const pickupDate = new Date(booking.start_date).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    // Calculate breakdown
+    const basePrice = parseFloat(booking.price_per_day || 0) * parseFloat(booking.total_days || 0);
+    const serviceFee = basePrice * 0.1; // 10% service fee
+    const insurance = basePrice * 0.05; // 5% insurance
+    const totalAmount = parseFloat(booking.total_amount || 0);
+
+    // Create email HTML with receipt
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #fe742c; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .receipt { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #fe742c; }
+          .receipt-header { border-bottom: 2px solid #fe742c; padding-bottom: 10px; margin-bottom: 15px; }
+          .receipt-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .receipt-row:last-child { border-bottom: none; font-weight: bold; font-size: 18px; color: #fe742c; }
+          .pickup-details { background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #fe742c; }
+          .button { display: inline-block; background: #fe742c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Booking Approved!</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${renter.full_name || renter.email},</p>
+            
+            <p>Great news! Your booking request has been <strong>approved</strong>.</p>
+            
+            <div class="receipt">
+              <div class="receipt-header">
+                <h2 style="margin: 0; color: #fe742c;">Booking Receipt</h2>
+                <p style="margin: 5px 0; color: #666;">Booking #${booking.booking_number || 'N/A'}</p>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Equipment:</strong></span>
+                <span>${equipment.name || 'Equipment'}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Rental Period:</strong></span>
+                <span>${startDate} to ${endDate}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Duration:</strong></span>
+                <span>${booking.total_days || 0} ${booking.total_days === 1 ? 'day' : 'days'}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Price per Day:</strong></span>
+                <span>GHS ${parseFloat(booking.price_per_day || 0).toFixed(2)}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Subtotal:</strong></span>
+                <span>GHS ${basePrice.toFixed(2)}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Service Fee (10%):</strong></span>
+                <span>GHS ${serviceFee.toFixed(2)}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Insurance (5%):</strong></span>
+                <span>GHS ${insurance.toFixed(2)}</span>
+              </div>
+              
+              <div class="receipt-row">
+                <span><strong>Total Amount:</strong></span>
+                <span>GHS ${totalAmount.toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <div class="pickup-details">
+              <h3 style="margin-top: 0; color: #fe742c;">📍 Pickup Details</h3>
+              <p><strong>Date:</strong> ${pickupDate}</p>
+              <p><strong>Time:</strong> ${pickupTime}</p>
+              <p><strong>Location:</strong> ${pickupLocation}</p>
+            </div>
+            
+            <p><strong>Next Steps:</strong></p>
+            <ol>
+              <li>Make payment to confirm your booking</li>
+              <li>Arrive at the pickup location on time</li>
+              <li>Bring a valid ID for verification</li>
+            </ol>
+            
+            <div style="text-align: center;">
+              <a href="${window.location.origin}/bookings.html" class="button">View Booking Details</a>
+            </div>
+            
+            <p>If you have any questions, please contact the equipment owner or our support team.</p>
+            
+            <div class="footer">
+              <p>Thank you for using Cr8Kit!</p>
+              <p>This is an automated email. Please do not reply directly to this message.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create notification in database
+    if (renter.user_id) {
+      try {
+        await window.supabaseClient.from("notifications").insert({
+          user_id: renter.user_id,
+          type: "booking_approved",
+          title: "Booking Approved",
+          message: `Your booking for ${equipment.name || "equipment"} has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
+          related_booking_id: booking.booking_id,
+        });
+      } catch (notifError) {
+        console.warn("Could not create notification:", notifError);
+        // Continue even if notification fails
+      }
+    }
+
+    // Try to send email via Supabase Edge Function (if configured)
+    try {
+      const { data, error } = await window.supabaseClient.functions.invoke('send-email', {
+        body: {
+          to: renter.email,
+          subject: `Booking Approved - ${equipment.name || "Equipment"} - ${booking.booking_number || ""}`,
+          html: emailHtml,
+          type: 'booking_approved'
+        }
+      });
+
+      if (error) {
+        console.warn("Edge function email failed, logging email details:", error);
+        // Fall through to console log
+      } else {
+        console.log("Email sent successfully via Edge Function");
+        return; // Success, exit early
+      }
+    } catch (edgeError) {
+      console.warn("Edge function not available or failed:", edgeError);
+      // Fall through to console log for manual sending
+    }
+
+    // Fallback: Log email details for manual sending or external service
+    console.log("=".repeat(60));
+    console.log("BOOKING APPROVAL EMAIL (Send via your email service)");
+    console.log("=".repeat(60));
+    console.log("To:", renter.email);
+    console.log("Subject:", `Booking Approved - ${equipment.name || "Equipment"} - ${booking.booking_number || ""}`);
+    console.log("HTML Content:", emailHtml);
+    console.log("=".repeat(60));
+    
+    // You can copy the HTML above and send via:
+    // - Resend API
+    // - SendGrid API
+    // - Mailgun API
+    // - Or any other email service
+
   } catch (error) {
     console.error("Error sending approval email:", error);
     // Don't fail the approval if email fails
