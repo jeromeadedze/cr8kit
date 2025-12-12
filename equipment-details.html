@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sony FX6 Cinema Line Camera - Cr8Kit</title>
+    <title>Equipment Details - Cr8Kit</title>
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -53,17 +53,17 @@
       <!-- Product Header -->
       <div class="product-header">
         <div>
-          <h1 class="product-title">Sony FX6 Cinema Line Camera</h1>
+          <h1 class="product-title">Loading...</h1>
           <div class="product-meta">
             <div class="product-rating">
               <i class="fas fa-star star-icon"></i>
-              <span>4.95</span>
-              <span class="review-count">(24 reviews)</span>
+              <span>-</span>
+              <span class="review-count">(-)</span>
             </div>
             <span class="product-location">
-              <i class="fas fa-map-marker-alt"></i> Accra, Greater Accra
+              <i class="fas fa-map-marker-alt"></i> Loading...
             </span>
-            <span class="verified-badge-inline">
+            <span class="verified-badge-inline" style="display: none;">
               <i class="fas fa-check-circle"></i> Verified Gear
             </span>
           </div>
@@ -74,8 +74,8 @@
       <div class="product-images-section">
         <div class="main-image-container">
           <img
-            src="https://via.placeholder.com/800x600?text=Sony+FX6+Main"
-            alt="Sony FX6 Cinema Line Camera"
+            src="https://via.placeholder.com/800x600?text=Loading..."
+            alt="Loading equipment image"
             class="main-product-image"
           />
         </div>
@@ -140,9 +140,9 @@
                 class="host-avatar"
               />
               <div class="host-details">
-                <div class="host-name">Hosted by Kwesi</div>
+                <div class="host-name">Loading...</div>
                 <div class="host-meta">
-                  Member since 2021 • Response time: 1 hour
+                  Loading...
                 </div>
               </div>
               <button class="btn-secondary">More from this owner</button>
@@ -153,56 +153,20 @@
           <div class="info-section">
             <h2 class="section-heading">About this gear</h2>
             <p class="section-text">
-              The Sony FX6 is a compact, lightweight cinema camera that delivers
-              exceptional image quality. With 15+ stops of dynamic range,
-              S-Cinetone gamma, and 10-bit 4:2:2 XAVC-I recording, it's perfect
-              for documentary, gimbal, and drone shoots. The camera features a
-              full-frame sensor and E-mount compatibility, making it versatile
-              for various shooting scenarios.
+              Loading equipment description...
             </p>
 
-            <h3 class="subsection-heading">Kit includes:</h3>
-            <ul class="kit-list">
-              <li>Sony FX6 Body</li>
-              <li>Sony FE 24-70mm f/2.8 GM Lens</li>
-              <li>2x 160GB CFexpress Type A Cards</li>
-              <li>3x BP-U35 Batteries & Charger</li>
-              <li>Shotgun Mic</li>
-            </ul>
-            <a href="#" class="show-more-link">
-              Show more <i class="fas fa-chevron-down"></i>
-            </a>
+            <!-- Kit list will be shown only if description includes kit info -->
+            <div id="kitListContainer" style="display: none;">
+              <h3 class="subsection-heading">Kit includes:</h3>
+              <ul class="kit-list"></ul>
+            </div>
           </div>
 
-          <!-- Technical Specifications -->
-          <div class="info-section">
+          <!-- Technical Specifications (hidden by default, can be shown if needed) -->
+          <div class="info-section" id="specsSection" style="display: none;">
             <h2 class="section-heading">Technical Specifications</h2>
-            <table class="specs-table">
-              <tr>
-                <td class="spec-label">Sensor Type</td>
-                <td class="spec-value">Full-Frame CMOS</td>
-              </tr>
-              <tr>
-                <td class="spec-label">Dynamic Range</td>
-                <td class="spec-value">15+ Stops</td>
-              </tr>
-              <tr>
-                <td class="spec-label">Weight</td>
-                <td class="spec-value">1.96 lb / 0.89 kg</td>
-              </tr>
-              <tr>
-                <td class="spec-label">Resolution</td>
-                <td class="spec-value">4K DCI (4096 x 2160)</td>
-              </tr>
-              <tr>
-                <td class="spec-label">Lens Mount</td>
-                <td class="spec-value">Sony E-Mount</td>
-              </tr>
-              <tr>
-                <td class="spec-label">Recording Media</td>
-                <td class="spec-value">CFexpress Type A / SD</td>
-              </tr>
-            </table>
+            <table class="specs-table"></table>
           </div>
 
           <!-- Availability -->
@@ -229,39 +193,7 @@
                 <div class="calendar-day-header">Th</div>
                 <div class="calendar-day-header">Fr</div>
                 <div class="calendar-day-header">Sa</div>
-
-                <!-- Calendar days (simplified) -->
-                <div class="calendar-day">1</div>
-                <div class="calendar-day">2</div>
-                <div class="calendar-day">3</div>
-                <div class="calendar-day">4</div>
-                <div class="calendar-day">5</div>
-                <div class="calendar-day">6</div>
-                <div class="calendar-day">7</div>
-                <div class="calendar-day">8</div>
-                <div class="calendar-day">9</div>
-                <div class="calendar-day selected start">10</div>
-                <div class="calendar-day selected">11</div>
-                <div class="calendar-day selected">12</div>
-                <div class="calendar-day selected end">13</div>
-                <div class="calendar-day">14</div>
-                <div class="calendar-day">15</div>
-                <div class="calendar-day">16</div>
-                <div class="calendar-day">17</div>
-                <div class="calendar-day">18</div>
-                <div class="calendar-day">19</div>
-                <div class="calendar-day">20</div>
-                <div class="calendar-day">21</div>
-                <div class="calendar-day">22</div>
-                <div class="calendar-day">23</div>
-                <div class="calendar-day">24</div>
-                <div class="calendar-day">25</div>
-                <div class="calendar-day">26</div>
-                <div class="calendar-day">27</div>
-                <div class="calendar-day">28</div>
-                <div class="calendar-day">29</div>
-                <div class="calendar-day">30</div>
-                <div class="calendar-day">31</div>
+                <!-- Calendar days will be generated dynamically by JavaScript -->
               </div>
             </div>
           </div>
@@ -269,7 +201,7 @@
           <!-- Location -->
           <div class="info-section">
             <h2 class="section-heading">Location</h2>
-            <p class="section-text">Accra, Greater Accra</p>
+            <p class="section-text">Loading...</p>
             <div class="map-container">
               <div class="map-placeholder">
                 <i class="fas fa-map-marker-alt"></i>
@@ -283,49 +215,15 @@
             <div class="reviews-header">
               <div>
                 <i class="fas fa-star star-icon"></i>
-                <span class="reviews-rating">4.95</span>
-                <span class="reviews-count">(24 reviews)</span>
+                <span class="reviews-rating">-</span>
+                <span class="reviews-count">(-)</span>
               </div>
             </div>
 
-            <div class="review-card">
-              <div class="review-header">
-                <div class="reviewer-info">
-                  <div class="reviewer-avatar">A</div>
-                  <div>
-                    <div class="reviewer-name">Ama K.</div>
-                    <div class="review-date">October 2023</div>
-                  </div>
-                </div>
-              </div>
-              <p class="review-text">
-                Camera was in perfect condition. Kwesi was super helpful with
-                the handoff. Highly recommended!
-              </p>
+            <!-- Reviews will be loaded dynamically -->
+            <div id="reviewsContainer">
+              <!-- Reviews will be inserted here by JavaScript -->
             </div>
-
-            <div class="review-card">
-              <div class="review-header">
-                <div class="reviewer-info">
-                  <div class="reviewer-avatar">E</div>
-                  <div>
-                    <div class="reviewer-name">Emmanuel O.</div>
-                    <div class="review-date">September 2023</div>
-                  </div>
-                </div>
-              </div>
-              <p class="review-text">
-                Great gear. The batteries were fully charged which saved my
-                shoot. Will rent again.
-              </p>
-            </div>
-
-            <button
-              class="btn-secondary"
-              style="width: 100%; margin-top: var(--spacing-md)"
-            >
-              Show all 24 reviews
-            </button>
           </div>
         </div>
 
@@ -334,10 +232,10 @@
           <div class="booking-card-sticky">
             <div class="booking-price-header">
               <span class="price-per-day"
-                >GHC 500 <span class="price-unit">/ day</span></span
+                >Loading... <span class="price-unit">/ day</span></span
               >
               <span class="price-rating">
-                <i class="fas fa-star star-icon"></i> 4.95
+                <i class="fas fa-star star-icon"></i> -
               </span>
             </div>
 
@@ -348,7 +246,7 @@
                   type="text"
                   class="booking-date-input"
                   id="startDateInput"
-                  value="10/10/2023"
+                  value=""
                   readonly
                 />
               </div>
@@ -358,7 +256,7 @@
                   type="text"
                   class="booking-date-input"
                   id="endDateInput"
-                  value="10/13/2023"
+                  value=""
                   readonly
                 />
               </div>
@@ -372,20 +270,7 @@
 
             <div class="booking-breakdown">
               <div class="breakdown-row">
-                <span>GHC 500 x 4 days</span>
-                <span>GHC 2,000</span>
-              </div>
-              <div class="breakdown-row">
-                <span>Service fee</span>
-                <span>GHC 150</span>
-              </div>
-              <div class="breakdown-row">
-                <span>Insurance</span>
-                <span>GHC 100</span>
-              </div>
-              <div class="breakdown-total">
-                <span>Total</span>
-                <span>GHC 2,250</span>
+                <span>Select dates to see pricing</span>
               </div>
             </div>
 
@@ -410,6 +295,6 @@
       </div>
     </footer>
 
-    <script src="js/equipment-details.js"></script>
+    <script src="js/equipment-details.js?v=2"></script>
   </body>
 </html>

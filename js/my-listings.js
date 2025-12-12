@@ -5,13 +5,17 @@
 
 let allListings = [];
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   // Update user info (avatar)
   if (window.updateUserInfo) {
     window.updateUserInfo();
   }
-  // Load listings from API
-  loadListings();
+  
+  // Initialize summary cards with 0 values first (immediate feedback)
+  updateSummaryCardsUI(0, 0, 0);
+  
+  // Load listings from API (this will also update summary cards with real data)
+  await loadListings();
   
   // Initialize listings page
   initListingsPage();
@@ -39,9 +43,25 @@ async function loadListings() {
       throw error;
     }
 
-    allListings = listings || [];
+    // Get active bookings for owner's equipment to determine rental status
+    const { data: activeBookings } = await window.supabaseClient
+      .from("bookings")
+      .select("equipment_id")
+      .eq("owner_id", userId)
+      .in("status", ["approved", "active", "pending"]);
+
+    const rentedEquipmentIds = new Set((activeBookings || []).map(b => b.equipment_id));
+
+    // Mark equipment as rented if it has active bookings
+    allListings = (listings || []).map(listing => ({
+      ...listing,
+      is_rented: rentedEquipmentIds.has(listing.equipment_id)
+    }));
+
     renderListings(allListings);
-    updateSummaryCards();
+    
+    // Update summary cards with fresh data
+    await updateSummaryCards();
 
   } catch (error) {
     console.error("Error loading listings:", error);
@@ -69,57 +89,192 @@ function renderListings(listings) {
 
 // Create listing card HTML
 function createListingCard(listing) {
-  const statusClass = listing.is_available ? 'available' : 'inactive';
-  const statusText = listing.is_available ? 'Available' : 'Inactive';
+  const isAvailable = listing.is_available;
+  const isRented = listing.is_rented || false;
   
+  // Determine status based on availability and rental status
+  let statusClass, statusText, cardStatus, priceStatusClass, priceStatusText;
+  
+  if (isRented && isAvailable) {
+    // Equipment is available but currently rented
+    statusClass = 'pending';
+    statusText = 'Rented';
+    cardStatus = 'rented';
+    priceStatusClass = 'pending';
+    priceStatusText = 'Rented';
+  } else if (isAvailable) {
+    statusClass = 'active';
+    statusText = 'Available';
+    cardStatus = 'available';
+    priceStatusClass = 'paid';
+    priceStatusText = 'Active';
+  } else {
+    statusClass = 'completed';
+    statusText = 'Inactive';
+    cardStatus = 'inactive';
+    priceStatusClass = 'pending';
+    priceStatusText = 'Inactive';
+  }
+
+  // Format date
+  let listedDate = 'Unknown';
+  if (listing.created_at) {
+    const date = new Date(listing.created_at);
+    listedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // Image - Fallback to placeholder if null
+  const imageUrl = listing.image_url || 'https://via.placeholder.com/120?text=No+Image';
+
   return `
-    <div class="booking-card" data-status="${statusClass}" data-equipment-id="${listing.id}">
-      <div class="booking-header">
-        <div class="booking-title">${listing.name}</div>
-        <div class="booking-status">
-          <span class="status-dot ${statusClass}"></span>
-          <span>${statusText}</span>
-        </div>
-      </div>
-      <div class="booking-details">
+    <div class="booking-card" data-status="${cardStatus}" data-equipment-id="${listing.equipment_id}">
+      <img
+        src="${imageUrl}"
+        alt="${listing.name}"
+        class="booking-image"
+      />
+      <div class="booking-content">
         <div class="booking-info">
-          <div class="booking-id">${listing.category}</div>
-          <div class="booking-dates">${listing.location}, ${listing.city}</div>
-          <div class="booking-user">Rating: ${listing.rating || 0} ⭐ | ${listing.total_rentals || 0} rentals</div>
+          <div class="booking-status">
+            <span class="status-dot ${statusClass}"></span>
+            <span>${statusText}</span>
+          </div>
+          <div class="booking-id">ID: #EQ-${listing.equipment_id}</div>
+          <h3 class="booking-title">${listing.name}</h3>
+          <p class="booking-description">
+            ${listing.description || 'No description provided.'}
+          </p>
+          <div class="booking-meta">
+            <span><i class="fas fa-tag"></i> ${listing.category}</span>
+            <span><i class="fas fa-calendar"></i> Listed: ${listedDate}</span>
+          </div>
         </div>
-        <div class="booking-price">
-          <div class="price-amount">GHC ${listing.price_per_day.toLocaleString()}/day</div>
-          <div class="price-status ${statusClass}">${statusText}</div>
+        <div class="booking-actions">
+          <div class="booking-price">
+            <div class="price-amount">
+              GH₵ ${listing.price_per_day.toLocaleString()}
+              <span style="font-size: 14px; font-weight: 400; color: var(--text-gray);">/ day</span>
+            </div>
+            <div class="price-status ${priceStatusClass}">${priceStatusText}</div>
+          </div>
+          <div style="display: flex; gap: var(--spacing-xs); align-items: center;">
+            <label
+              class="listing-toggle-switch"
+              onclick="event.stopPropagation();"
+              style="margin: 0"
+            >
+              <input
+                type="checkbox"
+                ${isAvailable ? 'checked' : ''}
+                onchange="toggleListing(this, event)"
+                data-equipment-id="${listing.equipment_id}"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+            <a
+              href="list-item.html?edit=${listing.equipment_id}"
+              class="icon-btn"
+              style="font-size: 16px; text-decoration: none"
+            >
+              <i class="fas fa-edit"></i>
+            </a>
+            <button class="icon-btn" style="font-size: 16px" onclick="deleteListing(${listing.equipment_id})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="booking-actions">
-        <label class="toggle-switch">
-          <input type="checkbox" ${listing.is_available ? 'checked' : ''} 
-                 onchange="toggleListing(this, event)" 
-                 data-equipment-id="${listing.id}">
-          <span class="toggle-slider"></span>
-        </label>
-        <button class="btn-edit" onclick="editListing(${listing.id})">Edit</button>
-        <button class="btn-delete" onclick="deleteListing(${listing.id})">Delete</button>
       </div>
     </div>
   `;
 }
 
 // Update summary cards
-function updateSummaryCards() {
-  const totalListings = allListings.length;
-  const activeListings = allListings.filter(l => l.is_available).length;
-  const totalRentals = allListings.reduce((sum, l) => sum + (l.total_rentals || 0), 0);
+async function updateSummaryCards() {
+  const userId = await window.getCurrentUserId();
+  if (!userId) {
+    console.error("User not authenticated");
+    // Set to 0 if not authenticated
+    updateSummaryCardsUI(0, 0, 0);
+    return;
+  }
+
+  // Initialize with 0 values
+  let totalListings = 0;
+  let currentlyRented = 0;
+  let totalEarnings = 0;
   
-  // Update summary cards if they exist
+  try {
+    // Get all listings for owner
+    const { data: allOwnerListings, error: listingsError } = await window.supabaseClient
+      .from("equipment")
+      .select("equipment_id, is_available")
+      .eq("owner_id", userId);
+
+    if (listingsError) {
+      console.error("Error fetching listings:", listingsError);
+    } else if (allOwnerListings) {
+      totalListings = allOwnerListings.length || 0;
+    }
+
+    // Get ALL bookings for owner's equipment (for stats)
+    const { data: allBookings, error: bookingsError } = await window.supabaseClient
+      .from("bookings")
+      .select("equipment_id, total_amount, payment_status, status")
+      .eq("owner_id", userId);
+    
+    if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError);
+    } else if (allBookings) {
+      // Count unique equipment items that are currently rented (active or approved bookings)
+      const activeBookings = allBookings.filter(b => 
+        b.status === "approved" || b.status === "active"
+      );
+      const rentedEquipmentIds = new Set(activeBookings.map(b => b.equipment_id));
+      currentlyRented = rentedEquipmentIds.size || 0;
+      
+      // Calculate total earnings from ALL paid bookings (not just active ones)
+      totalEarnings = allBookings
+        .filter(b => b.payment_status === 'paid')
+        .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+    }
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    // On error, values remain 0
+  }
+  
+  // Update UI with calculated values
+  updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings);
+}
+
+// Helper function to update summary cards UI
+function updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings) {
   const totalCard = document.querySelector('[data-summary="total"]');
-  const activeCard = document.querySelector('[data-summary="active"]');
-  const rentalsCard = document.querySelector('[data-summary="rentals"]');
+  const rentedCard = document.querySelector('[data-summary="rented"]');
+  const earningsCard = document.querySelector('[data-summary="earnings"]');
   
-  if (totalCard) totalCard.textContent = totalListings;
-  if (activeCard) activeCard.textContent = activeListings;
-  if (rentalsCard) rentalsCard.textContent = totalRentals;
+  if (totalCard) {
+    totalCard.textContent = totalListings;
+    console.log("Updated total listings:", totalListings);
+  } else {
+    console.warn("Total listings card not found");
+  }
+  
+  if (rentedCard) {
+    rentedCard.textContent = currentlyRented;
+    console.log("Updated currently rented:", currentlyRented);
+  } else {
+    console.warn("Currently rented card not found");
+  }
+  
+  if (earningsCard) {
+    earningsCard.textContent = `GH₵ ${totalEarnings.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+    console.log("Updated total earnings:", totalEarnings);
+  } else {
+    console.warn("Total earnings card not found");
+  }
 }
 
 // Initialize listings page
@@ -144,8 +299,8 @@ function initFilters() {
   });
 }
 
-// Apply filter
-function applyFilter(filter) {
+// Apply filter (exposed globally)
+window.applyFilter = function(filter) {
   const listingCards = document.querySelectorAll(".booking-card");
   const filterButtons = document.querySelectorAll(".filter-btn");
 
@@ -172,7 +327,11 @@ function applyFilter(filter) {
       card.style.display = "flex";
     }
   });
-}
+};
+
+// Expose functions globally
+window.toggleListing = toggleListing;
+window.deleteListing = deleteListing;
 
 // Toggle listing active status
 async function toggleListing(checkbox, event) {
@@ -226,7 +385,7 @@ async function toggleListing(checkbox, event) {
 
     if (isAvailable) {
       if (statusText) statusText.textContent = "Available";
-      if (statusDot) statusDot.className = "status-dot available";
+      if (statusDot) statusDot.className = "status-dot active";
       if (priceStatus) {
         priceStatus.textContent = "Active";
         priceStatus.className = "price-status paid";
@@ -234,7 +393,7 @@ async function toggleListing(checkbox, event) {
       card.setAttribute("data-status", "available");
     } else {
       if (statusText) statusText.textContent = "Inactive";
-      if (statusDot) statusDot.className = "status-dot inactive";
+      if (statusDot) statusDot.className = "status-dot completed";
       if (priceStatus) {
         priceStatus.textContent = "Inactive";
         priceStatus.className = "price-status pending";
@@ -248,7 +407,7 @@ async function toggleListing(checkbox, event) {
       listing.is_available = isAvailable;
     }
     
-    updateSummaryCards();
+    await updateSummaryCards();
 
   } catch (error) {
     console.error("Error updating listing:", error);

@@ -79,7 +79,7 @@ async function loadOwnerDashboard(userId) {
         const activeCount = activeListings?.length || 0;
 
         // Update first stat card (total earned)
-        const earnedCard = document.querySelectorAll('.stat-card')[0];
+        const earnedCard = document.getElementById('stat-card-1');
         if (earnedCard) {
             const value = earnedCard.querySelector('.stat-value');
             if (value) value.textContent = `GHC ${totalEarned.toLocaleString()}`;
@@ -88,7 +88,7 @@ async function loadOwnerDashboard(userId) {
         }
 
         // Update pending payout
-        const pendingCard = document.querySelectorAll('.stat-card')[1];
+        const pendingCard = document.getElementById('stat-card-2');
         if (pendingCard) {
             const value = pendingCard.querySelector('.stat-value');
             if (value) {
@@ -99,7 +99,7 @@ async function loadOwnerDashboard(userId) {
         }
 
         // Update active listings
-        const listingsCard = document.querySelectorAll('.stat-card')[2];
+        const listingsCard = document.getElementById('stat-card-3');
         if (listingsCard) {
             const value = listingsCard.querySelector('.stat-value');
             if (value) value.textContent = `${activeCount} Items`;
@@ -129,36 +129,42 @@ async function loadRenterDashboard(userId) {
 
         // Calculate stats
         const activeRentals = bookings.filter(
-            b => b.status === 'active' || b.status === 'approved'
+            b => b.status === "active" || b.status === "approved"
         ).length;
 
         const pendingRequests = bookings.filter(
-            b => b.status === 'pending'
+            b => b.status === "pending"
         ).length;
 
         const totalSpent = bookings
-            .filter(b => b.payment_status === 'paid')
+            .filter(b => b.payment_status === "paid")
             .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
 
         // Update active rentals
-        const activeCard = document.querySelectorAll('.stat-card')[0];
+        const activeCard = document.getElementById('stat-card-1');
         if (activeCard) {
             const value = activeCard.querySelector('.stat-value');
             if (value) value.textContent = activeRentals;
+            const label = activeCard.querySelector('.stat-label');
+            if (label) label.textContent = 'Active Rentals';
         }
 
         // Update pending requests
-        const pendingCard = document.querySelectorAll('.stat-card')[1];
+        const pendingCard = document.getElementById('stat-card-2');
         if (pendingCard) {
             const value = pendingCard.querySelector('.stat-value');
             if (value) value.textContent = pendingRequests;
+            const label = pendingCard.querySelector('.stat-label');
+            if (label) label.textContent = 'Pending Requests';
         }
 
         // Update total spent
-        const spentCard = document.querySelectorAll('.stat-card')[2];
+        const spentCard = document.getElementById('stat-card-3');
         if (spentCard) {
             const value = spentCard.querySelector('.stat-value');
             if (value) value.textContent = `GHC ${totalSpent.toLocaleString()}`;
+            const label = spentCard.querySelector('.stat-label');
+            if (label) label.textContent = 'Total Spent';
         }
     } catch (error) {
         console.error("Error loading renter dashboard:", error);

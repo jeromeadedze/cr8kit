@@ -705,6 +705,8 @@
   display: flex;
   gap: var(--spacing-md);
   transition: all 0.3s ease;
+  position: relative;
+  align-items: flex-start;
 }
 
 .booking-card:hover {
@@ -712,11 +714,13 @@
 }
 
 .booking-image {
-  width: 120px;
-  height: 120px;
+  width: 200px;
+  height: 150px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
+  background: var(--bg-beige);
+  display: block;
 }
 
 .booking-content {
@@ -728,13 +732,23 @@
 
 .booking-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .booking-status {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
 }
 
 .status-dot {
@@ -755,31 +769,38 @@
   background: var(--text-gray);
 }
 
-.booking-id {
-  font-size: 12px;
-  color: var(--text-gray);
-  margin-bottom: var(--spacing-xs);
-}
-
 .booking-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--text-dark);
-  margin-bottom: var(--spacing-xs);
+  margin: 0;
+  flex: 1;
 }
 
-.booking-description {
-  font-size: 14px;
-  color: var(--text-gray);
-  margin-bottom: var(--spacing-sm);
-}
-
-.booking-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+.booking-id {
   font-size: 13px;
   color: var(--text-gray);
+  font-weight: 400;
+}
+
+.booking-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.booking-detail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 14px;
+  color: var(--text-dark);
+}
+
+.booking-detail-item i {
+  color: var(--text-gray);
+  width: 16px;
 }
 
 .booking-actions {
@@ -787,17 +808,28 @@
   flex-direction: column;
   gap: var(--spacing-xs);
   align-items: flex-end;
+  justify-content: flex-start;
+  min-width: 150px;
+  align-self: flex-start;
 }
 
 .booking-price {
   text-align: right;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  width: 100%;
 }
 
 .price-amount {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.price-breakdown {
+  font-size: 13px;
+  color: var(--text-gray);
+  margin-top: var(--spacing-xs);
 }
 
 .price-status {
@@ -811,6 +843,46 @@
 
 .price-status.pending {
   color: var(--text-gray);
+}
+
+/* Cancel button style for bookings */
+.btn-cancel {
+  background: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+  border-color: var(--error-red);
+  color: var(--error-red);
+  background: rgba(231, 76, 60, 0.05);
+}
+
+.btn-cancel-top {
+  background: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  align-self: flex-end;
+  margin-bottom: var(--spacing-sm);
+}
+
+.btn-cancel-top:hover {
+  border-color: var(--error-red);
+  color: var(--error-red);
+  background: rgba(231, 76, 60, 0.05);
 }
 
 /* Tabs */
@@ -926,6 +998,20 @@
 
   .booking-content {
     flex-direction: column;
+  }
+
+  .booking-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .booking-actions {
+    align-items: flex-start;
+    margin-top: var(--spacing-md);
+  }
+
+  .booking-price {
+    text-align: left;
   }
 }
 
@@ -2118,10 +2204,10 @@
   background: var(--card-white);
   color: var(--text-dark);
   border: 2px solid var(--border-color);
-  padding: 10px 20px;
+  padding: 14px 28px;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -2539,21 +2625,10 @@
   border-top: 1px solid var(--border-color);
 }
 
-.btn-preview {
-  background: var(--card-white);
-  color: var(--text-dark);
-  border: 2px solid var(--border-color);
+/* Make btn-secondary consistent in form footer */
+.form-actions-footer .btn-secondary {
   padding: 14px 28px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
   font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-preview:hover {
-  border-color: var(--primary-orange);
-  color: var(--primary-orange);
 }
 
 .btn-publish {
@@ -3477,4 +3552,57 @@
   .listings-grid {
     grid-template-columns: 1fr;
   }
+}
+/* Dashboard Page Specific Styles */
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+.dashboard-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.dashboard-subtitle {
+  color: var(--text-gray);
+}
+
+.dashboard-section {
+  background: var(--card-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.dashboard-section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.btn-outline {
+  background: var(--card-white);
+  color: var(--primary-orange);
+  border: 2px solid var(--primary-orange);
+}
+
+.empty-state {
+  color: var(--text-gray);
+  text-align: center;
+  padding: var(--spacing-lg);
 }

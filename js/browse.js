@@ -126,17 +126,38 @@ function loadEquipment() {
   const city = document.getElementById("locationFilter")?.value || "";
   const search = document.getElementById("searchInput")?.value || "";
 
-  // Build Supabase query
+  // Build Supabase query with owner information
   let query = window.supabaseClient
     .from("equipment")
     .select(
-      "equipment_id, name, category, description, price_per_day, location, city, rating, total_rentals, is_available, owner_id, image_url"
+      `
+      equipment_id, 
+      name, 
+      category, 
+      description, 
+      price_per_day, 
+      location, 
+      city, 
+      rating, 
+      total_rentals, 
+      is_available, 
+      owner_id, 
+      image_url,
+      owner:owner_id (
+        user_id,
+        full_name,
+        email
+      )
+      `
     )
     .order("created_at", { ascending: false })
     .range((currentPage - 1) * 12, currentPage * 12 - 1);
 
   // Apply filters
-  if (category) query = query.eq("category", category);
+  if (checkedCategories.length > 0) {
+      query = query.in("category", checkedCategories);
+  }
+  
   if (city) query = query.ilike("city", `%${city}%`);
   if (search) {
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
@@ -166,7 +187,11 @@ function loadEquipment() {
             total_rentals: item.total_rentals,
             is_available: item.is_available,
             image_url: item.image_url,
-            owner: item.owner_id,
+            owner: item.owner ? {
+              id: item.owner.user_id,
+              name: item.owner.full_name || item.owner.email || 'Unknown',
+              email: item.owner.email
+            } : { id: item.owner_id, name: 'Unknown' },
           };
           const card = createEquipmentCard(normalized);
           grid.appendChild(card);
@@ -177,20 +202,28 @@ function loadEquipment() {
           countEl.textContent = data.length;
         }
       } else {
-        grid.innerHTML =
-          '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray);">No equipment found.</p>';
+        if(currentPage === 1) {
+            grid.innerHTML =
+            '<p style="text-align: center; padding: var(--spacing-lg); color: var(--text-gray); grid-column: 1/-1;">No equipment found matching your filters.</p>';
+        }
       }
       isLoading = false;
     })
     .catch((error) => {
       console.error("Error loading equipment:", error);
-      // Fallback to sample data
-      if (currentPage === 1) {
-        grid.innerHTML = "";
-        sampleEquipment.forEach((item) => {
-          const card = createEquipmentCard(item);
-          grid.appendChild(card);
-        });
+      // Fallback to sample data ONLY if we are on page 1 and really failed significantly (e.g. offline)
+      // Otherwise showing sample data mixed with real data is confusing.
+      // For now, let's just show the error in console or toast.
+      if (currentPage === 1 && grid.innerHTML === "") {
+         // Maybe show empty state instead of sample data? 
+         // But sticking to original behavior of falling back to sample data for demo purposes might be desired.
+         // Let's keep sample data loading if it was purely empty.
+         if(sampleEquipment.length > 0) {
+             sampleEquipment.forEach((item) => {
+                const card = createEquipmentCard(item);
+                grid.appendChild(card);
+            });
+         }
       }
       isLoading = false;
     });
@@ -214,7 +247,10 @@ function createEquipmentCard(item) {
 
   // Format location (API returns city, sample data has location)
   const location = item.location || `${item.city || "Accra"}`;
-  const ownerName = item.owner?.name || item.owner || "Unknown";
+  // Get owner name - handle both object format (from API) and string/number format (from sample data)
+  const ownerName = typeof item.owner === 'object' && item.owner !== null 
+    ? (item.owner.name || item.owner.full_name || 'Unknown')
+    : (item.owner || 'Unknown');
   const price = item.price_per_day || item.price || 0;
   const rating = item.rating || 0;
 
@@ -355,17 +391,24 @@ function loadMoreEquipment() {
 function toggleFavorite(id) {
   const btn = event.currentTarget;
   const icon = btn.querySelector("i");
+  let action = '';
 
   if (icon.classList.contains("far")) {
     icon.classList.remove("far");
     icon.classList.add("fas");
     btn.classList.add("active");
+    action = 'Added to';
   } else {
     icon.classList.remove("fas");
     icon.classList.add("far");
     btn.classList.remove("active");
+    action = 'Removed from';
   }
 
-  // TODO: Save to backend
-  console.log("Toggle favorite:", id);
+  // Use new Toast
+  if(window.showToast) {
+      window.showToast(`${action} favorites`, 'success');
+  } else {
+      console.log(`${action} favorites:`, id);
+  }
 }

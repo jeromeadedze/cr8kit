@@ -182,7 +182,58 @@ window.updateUserInfo = async function () {
         el.textContent = `Hosted by ${profile.full_name || profile.email}`;
       }
     });
+    
+    // Highlight active nav
+    window.highlightActiveNav();
+
   } catch (error) {
     console.error("Error updating user info:", error);
   }
+};
+
+/**
+ * Show Toast Notification
+ */
+window.showToast = function(message, type = 'info') {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = type === 'success' ? '<i class="fas fa-check-circle"></i>' : (type === 'error' ? '<i class="fas fa-exclamation-circle"></i>' : '');
+    toast.innerHTML += `<span>${message}</span>`;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
+/**
+ * Highlight Active Navigation Item
+ */
+window.highlightActiveNav = function() {
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-link, .btn-list-item'); // Include List Item button
+
+    navLinks.forEach(link => {
+        // Simple check: if href matches current filename
+        const href = link.getAttribute('href');
+        if (href && currentPath.includes(href)) {
+           // Add a style or class. Cr8kit css doesn't specific 'active' for nav-link but we can add inline or class
+           link.style.color = 'var(--primary-orange)';
+           link.style.fontWeight = '700';
+           if(link.classList.contains('btn-list-item')) {
+               link.style.backgroundColor = '#e6651f'; // Darker orange
+               link.style.color = 'white';
+           }
+        }
+    });
 };

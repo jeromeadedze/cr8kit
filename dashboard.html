@@ -49,90 +49,57 @@
       </div>
     </nav>
 
-    <div
-      class="main-content"
-      style="max-width: 1200px; margin: 0 auto; padding: var(--spacing-lg)"
-    >
-      <div style="margin-bottom: var(--spacing-xl)">
-        <h1
-          style="
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: var(--spacing-xs);
-          "
-        >
-          Dashboard
-        </h1>
-        <p style="color: var(--text-gray)">
+    <div class="main-content dashboard-container">
+      <div class="dashboard-header">
+        <h1 class="dashboard-title">Dashboard</h1>
+        <p class="dashboard-subtitle">
           Manage your rentals and discover new equipment.
         </p>
       </div>
 
       <!-- Stats Grid -->
       <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card" id="stat-card-1">
           <div class="stat-icon">
             <i class="fas fa-home"></i>
           </div>
           <div class="stat-content">
             <div class="stat-label">Active Rentals</div>
-            <div class="stat-value">2</div>
+            <div class="stat-value">-</div>
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" id="stat-card-2">
           <div class="stat-icon">
             <i class="fas fa-calendar-alt"></i>
           </div>
           <div class="stat-content">
             <div class="stat-label">Pending Requests</div>
-            <div class="stat-value">1</div>
+            <div class="stat-value">-</div>
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" id="stat-card-3">
           <div class="stat-icon">
             <i class="fas fa-dollar-sign"></i>
           </div>
           <div class="stat-content">
             <div class="stat-label">Total Spent</div>
-            <div class="stat-value">GHS 1,450.00</div>
+            <div class="stat-value">-</div>
           </div>
         </div>
       </div>
 
       <!-- Quick Actions -->
-      <div
-        style="
-          background: var(--card-white);
-          border-radius: var(--radius-md);
-          padding: var(--spacing-lg);
-          box-shadow: var(--shadow-sm);
-          margin-bottom: var(--spacing-lg);
-        "
-      >
-        <h2
-          style="
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: var(--spacing-md);
-          "
-        >
-          Quick Actions
-        </h2>
-        <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap">
+      <div class="dashboard-section">
+        <h2 class="dashboard-section-title">Quick Actions</h2>
+        <div class="action-buttons">
           <a href="browse.html" class="btn-list-item">
             <i class="fas fa-search"></i> Browse Equipment
           </a>
           <a
             href="bookings.html"
-            class="btn-list-item"
-            style="
-              background: var(--card-white);
-              color: var(--primary-orange);
-              border: 2px solid var(--primary-orange);
-            "
+            class="btn-list-item btn-outline"
           >
             <i class="fas fa-calendar"></i> My Bookings
           </a>
@@ -140,30 +107,9 @@
       </div>
 
       <!-- Recent Activity -->
-      <div
-        style="
-          background: var(--card-white);
-          border-radius: var(--radius-md);
-          padding: var(--spacing-lg);
-          box-shadow: var(--shadow-sm);
-        "
-      >
-        <h2
-          style="
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: var(--spacing-md);
-          "
-        >
-          Recent Activity
-        </h2>
-        <p
-          style="
-            color: var(--text-gray);
-            text-align: center;
-            padding: var(--spacing-lg);
-          "
-        >
+      <div class="dashboard-section">
+        <h2 class="dashboard-section-title">Recent Activity</h2>
+        <p class="empty-state">
           No recent activity to display.
         </p>
       </div>
