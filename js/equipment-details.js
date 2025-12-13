@@ -12,7 +12,12 @@ let pricePerDay = 0; // Equipment price per day
 let equipmentData = null; // Full equipment data
 
 // Send booking request email to owner
-async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails, bookingId = null) {
+async function sendBookingRequestEmail(
+  equipmentId,
+  ownerId,
+  bookingDetails,
+  bookingId = null
+) {
   try {
     // Get owner details
     const { data: owner } = await window.supabaseClient
@@ -45,7 +50,7 @@ async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails, boo
         related_equipment_id: equipmentId,
         related_booking_id: bookingId,
       });
-      
+
       // Update notification badge
       if (window.updateGlobalNotificationBadge) {
         window.updateGlobalNotificationBadge();
@@ -426,6 +431,84 @@ async function loadEquipmentDetails() {
     const reviewsRating = document.querySelector(".reviews-rating");
     if (reviewsRating) {
       reviewsRating.textContent = (equipment.rating || 0).toFixed(2);
+    }
+
+    // Hide booking button and disable date inputs if user is the owner
+    const bookingBtn = document.querySelector(".btn-book-request");
+    const startDateInput = document.getElementById("startDateInput");
+    const endDateInput = document.getElementById("endDateInput");
+
+    if (bookingBtn) {
+      const userId = await window.getCurrentUserId();
+      // Ensure both are numbers for proper comparison
+      const ownerId =
+        typeof equipment.owner_id === "string"
+          ? parseInt(equipment.owner_id, 10)
+          : equipment.owner_id;
+      const currentUserId =
+        typeof userId === "string" ? parseInt(userId, 10) : userId;
+
+      if (currentUserId && ownerId && currentUserId === ownerId) {
+        // Hide and disable booking button
+        bookingBtn.style.display = "none";
+        bookingBtn.disabled = true;
+
+        // Disable date inputs
+        if (startDateInput) {
+          startDateInput.disabled = true;
+          startDateInput.style.cursor = "not-allowed";
+          startDateInput.style.opacity = "0.6";
+        }
+        if (endDateInput) {
+          endDateInput.disabled = true;
+          endDateInput.style.cursor = "not-allowed";
+          endDateInput.style.opacity = "0.6";
+        }
+
+        // Show a message instead
+        const bookingCard = bookingBtn.closest(".booking-card-sticky");
+        if (bookingCard) {
+          // Remove any existing message first
+          const existingMessage = bookingCard.querySelector(
+            ".owner-booking-message"
+          );
+          if (existingMessage) {
+            existingMessage.remove();
+          }
+
+          const message = document.createElement("p");
+          message.className = "owner-booking-message";
+          message.style.cssText =
+            "text-align: center; color: var(--text-gray); padding: 1rem; font-size: 14px; background: rgba(254, 116, 44, 0.1); border-radius: 8px; margin-top: 1rem;";
+          message.innerHTML =
+            '<i class="fas fa-info-circle" style="margin-right: 8px;"></i>This is your equipment. You cannot book it.';
+          bookingCard.insertBefore(message, bookingBtn);
+        }
+      } else {
+        // User is not the owner - ensure button is visible and inputs are enabled
+        bookingBtn.style.display = "";
+        bookingBtn.disabled = false;
+        if (startDateInput) {
+          startDateInput.disabled = false;
+          startDateInput.style.cursor = "";
+          startDateInput.style.opacity = "";
+        }
+        if (endDateInput) {
+          endDateInput.disabled = false;
+          endDateInput.style.cursor = "";
+          endDateInput.style.opacity = "";
+        }
+        // Remove owner message if it exists
+        const bookingCard = bookingBtn.closest(".booking-card-sticky");
+        if (bookingCard) {
+          const existingMessage = bookingCard.querySelector(
+            ".owner-booking-message"
+          );
+          if (existingMessage) {
+            existingMessage.remove();
+          }
+        }
+      }
     }
 
     // Update reviews section
@@ -836,6 +919,74 @@ function initBookingForm() {
       return;
     }
 
+    // CRITICAL: Always check if user is trying to book their own equipment
+    // Fetch owner_id directly from database to ensure accuracy
+    let ownerId = null;
+    try {
+      const { data: eq, error: eqError } = await window.supabaseClient
+        .from("equipment")
+        .select("owner_id")
+        .eq("equipment_id", equipmentId)
+        .single();
+
+      if (eqError) {
+        console.error("Error fetching equipment owner:", eqError);
+        if (window.showToast)
+          window.showToast(
+            "Error verifying equipment ownership. Please try again.",
+            "error"
+          );
+        else alert("Error verifying equipment ownership. Please try again.");
+        return;
+      }
+
+      if (eq && eq.owner_id) {
+        ownerId =
+          typeof eq.owner_id === "string"
+            ? parseInt(eq.owner_id, 10)
+            : eq.owner_id;
+      }
+    } catch (error) {
+      console.error("Error checking equipment owner:", error);
+      if (window.showToast)
+        window.showToast(
+          "Error verifying equipment ownership. Please try again.",
+          "error"
+        );
+      else alert("Error verifying equipment ownership. Please try again.");
+      return;
+    }
+
+    // Ensure userId is a number for comparison
+    const currentUserId =
+      typeof userId === "string" ? parseInt(userId, 10) : userId;
+
+    // Block booking if user is the owner
+    if (ownerId && currentUserId && currentUserId === ownerId) {
+      if (window.showToast) {
+        window.showToast("Owners cannot book their own equipment.", "error");
+      } else {
+        alert("Owners cannot book their own equipment.");
+      }
+      return;
+    }
+
+    // Double-check: Also verify from equipmentData if available
+    if (equipmentData && equipmentData.owner_id) {
+      const equipmentOwnerId =
+        typeof equipmentData.owner_id === "string"
+          ? parseInt(equipmentData.owner_id, 10)
+          : equipmentData.owner_id;
+      if (currentUserId === equipmentOwnerId) {
+        if (window.showToast) {
+          window.showToast("Owners cannot book their own equipment.", "error");
+        } else {
+          alert("Owners cannot book their own equipment.");
+        }
+        return;
+      }
+    }
+
     // Ensure price is loaded
     if (!pricePerDay || pricePerDay === 0) {
       // Try to reload equipment details
@@ -866,12 +1017,35 @@ function initBookingForm() {
       btn.disabled = true;
       btn.textContent = "Requesting...";
 
-      // Get owner ID again to be safe
-      const { data: eq } = await window.supabaseClient
+      // Get owner ID again to be safe - FINAL CHECK before inserting
+      const { data: eq, error: eqError } = await window.supabaseClient
         .from("equipment")
         .select("owner_id")
         .eq("equipment_id", equipmentId)
         .single();
+
+      if (eqError) {
+        throw eqError;
+      }
+
+      // FINAL VALIDATION: Prevent owner from booking their own equipment
+      const finalOwnerId =
+        typeof eq.owner_id === "string"
+          ? parseInt(eq.owner_id, 10)
+          : eq.owner_id;
+      const finalUserId =
+        typeof userId === "string" ? parseInt(userId, 10) : userId;
+
+      if (finalOwnerId && finalUserId && finalOwnerId === finalUserId) {
+        btn.disabled = false;
+        btn.textContent = "Request to Book";
+        if (window.showToast) {
+          window.showToast("Owners cannot book their own equipment.", "error");
+        } else {
+          alert("Owners cannot book their own equipment.");
+        }
+        return;
+      }
 
       const { error } = await window.supabaseClient.from("bookings").insert({
         renter_id: userId,
@@ -901,16 +1075,21 @@ function initBookingForm() {
 
       // Send email notification to owner
       if (createdBooking) {
-        await sendBookingRequestEmail(parseInt(equipmentId), eq.owner_id, {
-          equipmentName: equipmentData?.name || "Equipment",
-          startDate: selectedStartDate.toISOString().split("T")[0],
-          endDate: selectedEndDate.toISOString().split("T")[0],
-          totalDays: days,
-          totalAmount: totalAmount,
-          bookingNumber:
-            createdBooking.booking_number ||
-            "BK" + Date.now().toString().slice(-6),
-        }, createdBooking.booking_id);
+        await sendBookingRequestEmail(
+          parseInt(equipmentId),
+          eq.owner_id,
+          {
+            equipmentName: equipmentData?.name || "Equipment",
+            startDate: selectedStartDate.toISOString().split("T")[0],
+            endDate: selectedEndDate.toISOString().split("T")[0],
+            totalDays: days,
+            totalAmount: totalAmount,
+            bookingNumber:
+              createdBooking.booking_number ||
+              "BK" + Date.now().toString().slice(-6),
+          },
+          createdBooking.booking_id
+        );
       }
 
       if (window.showToast)

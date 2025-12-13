@@ -42,7 +42,15 @@ async function loadNotifications() {
 
     const { data: notifications, error } = await window.supabaseClient
       .from("notifications")
-      .select("*")
+      .select(
+        `
+        *,
+        booking:related_booking_id (
+          return_status,
+          status
+        )
+      `
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -92,6 +100,16 @@ function renderNotifications() {
   }
 
   container.innerHTML = html;
+
+  // Re-attach event listeners for approve buttons after rendering
+  document.querySelectorAll(".approve-return-btn").forEach((btn) => {
+    const notificationId = btn.getAttribute("data-notification-id");
+    const bookingId = btn.getAttribute("data-booking-id");
+    if (notificationId && bookingId) {
+      btn.onclick = () =>
+        handleConfirmReturn(parseInt(notificationId), parseInt(bookingId), btn);
+    }
+  });
 }
 
 /**
@@ -154,6 +172,10 @@ function createNotificationCard(notification) {
     accentColor = "var(--primary-orange)";
     icon = "fas fa-calendar-plus";
     iconBg = "rgba(254, 116, 44, 0.1)";
+  } else if (type.includes("equipment_returned")) {
+    accentColor = "var(--primary-orange)";
+    icon = "fas fa-undo";
+    iconBg = "rgba(254, 116, 44, 0.1)";
   } else if (type.includes("payment_received")) {
     // Payment received notification (for owners)
     accentColor = "var(--success-green)";
@@ -178,6 +200,20 @@ function createNotificationCard(notification) {
   if (type.includes("booking_request")) {
     const bookingId = notification.related_booking_id || "null";
     actionButton = `<button class="notification-action-btn" onclick="handleBookingRequest(${notification.notification_id}, ${bookingId})">Review</button>`;
+  } else if (type.includes("equipment_returned")) {
+    // Equipment returned - owner should approve return
+    const bookingId = notification.related_booking_id || "null";
+    // Check if return is already confirmed from the joined booking data
+    const booking = notification.booking;
+    const isConfirmed = booking && booking.return_status === "confirmed";
+
+    if (isConfirmed) {
+      // Show approved state
+      actionButton = `<button class="notification-action-btn" style="background: var(--success-green); color: white; font-weight: 600; border: none; cursor: not-allowed; opacity: 0.8;" disabled>Approved</button>`;
+    } else {
+      // Always show approve button for equipment_returned notifications
+      actionButton = `<button class="notification-action-btn approve-return-btn" data-notification-id="${notification.notification_id}" data-booking-id="${bookingId}" style="background: var(--primary-orange); color: white; font-weight: 600; border: none;" onclick="handleConfirmReturn(${notification.notification_id}, ${bookingId}, this)">Approve</button>`;
+    }
   } else if (type.includes("payment_received")) {
     // Payment received - owner should view booking details
     const bookingId = notification.related_booking_id || "null";
@@ -855,6 +891,117 @@ function showPaymentDetailsModal(booking) {
 }
 
 /**
+ * Handle confirm equipment return
+ */
+async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
+  if (!bookingId || bookingId === "null" || bookingId === null) {
+    alert("Booking ID not available.");
+    return;
+  }
+
+  // Get the button element - use passed element or find it
+  const button =
+    buttonElement ||
+    document.querySelector(
+      `button.approve-return-btn[data-notification-id="${notificationId}"]`
+    ) ||
+    event?.target;
+
+  // Check if return is already confirmed
+  try {
+    const { data: booking, error: bookingError } = await window.supabaseClient
+      .from("bookings")
+      .select("return_status, status")
+      .eq("booking_id", bookingId)
+      .single();
+
+    if (bookingError) {
+      console.error("Error fetching booking:", bookingError);
+      alert("Unable to verify booking status.");
+      return;
+    }
+
+    if (booking.return_status === "confirmed") {
+      alert("This return has already been approved.");
+      // Mark notification as read and reload
+      markAsRead(notificationId);
+      await loadNotifications();
+      return;
+    }
+  } catch (error) {
+    console.error("Error checking booking status:", error);
+  }
+
+  if (
+    !confirm(
+      "Approve that the equipment has been returned and is in good condition?"
+    )
+  ) {
+    return;
+  }
+
+  // Immediately update button appearance
+  if (button) {
+    button.style.background = "var(--success-green)";
+    button.textContent = "Approved";
+    button.disabled = true;
+    button.style.cursor = "not-allowed";
+    button.style.opacity = "0.8";
+  }
+
+  try {
+    // Update booking return status
+    const { error } = await window.supabaseClient
+      .from("bookings")
+      .update({
+        return_status: "confirmed",
+        status: "completed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) {
+      console.error("Error confirming return:", error);
+      // Revert button if error
+      if (button) {
+        button.style.background = "var(--primary-orange)";
+        button.textContent = "Approve";
+        button.disabled = false;
+        button.style.cursor = "pointer";
+        button.style.opacity = "1";
+      }
+      alert("Error approving return. Please try again.");
+      return;
+    }
+
+    // Mark notification as read
+    markAsRead(notificationId);
+
+    // Show success message
+    if (window.showToast) {
+      window.showToast("Equipment return approved successfully!", "success");
+    } else {
+      alert("Equipment return approved successfully!");
+    }
+
+    // Reload notifications to update the list
+    await loadNotifications();
+    updateNotificationBadge();
+  } catch (error) {
+    console.error("Error in handleConfirmReturn:", error);
+    // Revert button if error
+    if (button) {
+      button.style.background = "var(--primary-orange)";
+      button.textContent = "Approve";
+      button.disabled = false;
+      button.style.cursor = "pointer";
+      button.style.opacity = "1";
+    }
+    alert("Error approving return. Please try again.");
+  }
+}
+
+/**
  * Handle payment action (for payment due/overdue)
  */
 function handlePaymentAction(notificationId) {
@@ -895,6 +1042,7 @@ window.updateNotificationBadge = updateNotificationBadge;
 window.filterNotifications = filterNotifications;
 window.markAllAsRead = markAllAsRead;
 window.handleBookingRequest = handleBookingRequest;
+window.handleConfirmReturn = handleConfirmReturn;
 window.handleViewBookingDetails = handleViewBookingDetails;
 window.handlePaymentAction = handlePaymentAction;
 window.handleViewBooking = handleViewBooking;
