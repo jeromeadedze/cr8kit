@@ -181,9 +181,7 @@ async function loadEquipment() {
         loadingSkeleton.style.display = "none";
       }
 
-      // Fallback to sample data ONLY if we are on page 1 and really failed significantly (e.g. offline)
-      // Otherwise showing sample data mixed with real data is confusing.
-      // Show empty state on error instead of sample data
+      // Show empty state on error
       if (currentPage === 1 && grid.innerHTML === "") {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
@@ -204,8 +202,7 @@ function createEquipmentCard(item) {
     (window.location.href = `equipment-details.html?id=${item.id}`);
 
   // Use optimized image URL with lazy loading
-  // Handle both API response format and sample data format
-  const imageUrl = item.image_url || item.image || "";
+  const imageUrl = item.image_url || "";
   const optimizedImage = imageUrl
     ? imageUrl.startsWith("http")
       ? imageUrl

@@ -195,7 +195,7 @@ function updateProfileSidebar(profile) {
     console.error("Profile name element not found");
   }
 
-  // TODO: Load actual rating from ratings table
+  // Load rating from ratings table when available
   // For now, keep default or calculate from ratings
 }
 
@@ -425,36 +425,36 @@ function validatePassword(password) {
 function initSignOutButton() {
   console.log("Attempting to initialize sign out button...");
   const signOutBtn = document.getElementById("signOutBtn");
-  
+
   if (!signOutBtn) {
     console.error("Sign out button not found! Retrying in 100ms...");
     setTimeout(initSignOutButton, 100);
     return;
   }
-  
+
   console.log("Sign out button found:", signOutBtn);
-  
+
   // Remove any existing handlers first by cloning
   const newBtn = signOutBtn.cloneNode(true);
   signOutBtn.parentNode.replaceChild(newBtn, signOutBtn);
   const btn = document.getElementById("signOutBtn");
-  
+
   if (!btn) {
     console.error("Failed to re-find button after clone!");
     return;
   }
-  
+
   // Set onclick handler directly with debugging
   btn.onclick = function (event) {
     console.log("Button clicked!", event);
-    
+
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
-    
+
     // Call the sign out function
-    if (typeof window.handleSignOut === 'function') {
+    if (typeof window.handleSignOut === "function") {
       console.log("Calling handleSignOut...");
       window.handleSignOut(event);
     } else {
@@ -478,12 +478,6 @@ function initSignOutButton() {
 
   console.log("Button onclick handler set:", typeof btn.onclick);
   console.log("Sign out button initialized successfully");
-  
-  // Test if button is visible
-  setTimeout(function() {
-    console.log("Button visibility check - offsetParent:", btn.offsetParent);
-    console.log("Button computed style:", window.getComputedStyle(btn).pointerEvents);
-  }, 500);
 }
 
 // Sign out function (also available as handleSignOut via window)

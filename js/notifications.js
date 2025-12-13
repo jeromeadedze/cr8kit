@@ -1025,7 +1025,7 @@ function handleViewBooking(bookingId) {
  */
 function handleReply(notificationId) {
   markAsRead(notificationId);
-  // TODO: Navigate to messages/chat page when implemented
+  // Navigate to messages/chat page when implemented
   console.log("Reply to notification:", notificationId);
 }
 
@@ -1033,7 +1033,7 @@ function handleReply(notificationId) {
  * Show notification menu (for future use)
  */
 function showNotificationMenu(notificationId) {
-  // TODO: Implement dropdown menu for notification actions
+  // Dropdown menu for notification actions (future feature)
   console.log("Show menu for notification:", notificationId);
 }
 

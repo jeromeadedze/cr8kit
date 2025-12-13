@@ -60,7 +60,7 @@ async function sendBookingRequestEmail(
       console.log("Notifications table not available yet:", notifError);
     }
 
-    // TODO: Send actual email via Edge Function or webhook
+    // Email can be sent via Supabase Edge Functions if needed
     // For now, notification is created in database
     console.log("Booking request notification created for owner:", owner.email);
   } catch (error) {

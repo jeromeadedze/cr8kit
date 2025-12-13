@@ -621,20 +621,9 @@ async function confirmReturn(bookingId) {
   }
 }
 
-// Send booking approval email (placeholder - implement with your email service)
+// Send booking approval notification
 async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
-  // TODO: Implement email sending
-  // You can use:
-  // - Supabase Edge Functions with Resend/SendGrid
-  // - Supabase Database Webhooks to trigger email service
-  // - Third-party service like Mailgun, SendGrid, etc.
-
-  console.log("Email notification would be sent:", {
-    to: booking.renter?.email,
-    subject: `Booking Approved - ${booking.equipment?.name || "Equipment"}`,
-    pickupLocation,
-    pickupTime,
-  });
+  // Creates notification in database (email can be added via Supabase Edge Functions)
 
   // For now, create a notification in the database
   try {
@@ -665,13 +654,9 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
   }
 }
 
-// Send return notification email (placeholder)
+// Send return notification
 async function sendReturnNotificationEmail(bookingId) {
-  // TODO: Implement email sending
-  console.log(
-    "Return notification email would be sent for booking:",
-    bookingId
-  );
+  // Creates notification in database (email can be added via Supabase Edge Functions)
 
   // Create notification for owner
   try {
@@ -1022,7 +1007,7 @@ function attachBookingEventListeners() {
 // Load older bookings (pagination)
 function loadOlderBookings() {
   console.log("Loading older bookings...");
-  // TODO: Implement pagination when API supports it
+  // Pagination can be implemented when needed
 }
 
 // Initialize on page load
