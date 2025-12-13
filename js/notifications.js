@@ -484,18 +484,374 @@ function handleBookingRequest(notificationId, bookingId) {
 }
 
 /**
- * Handle payment received - view booking details
+ * Handle payment received - show payment details modal
  */
-function handleViewBookingDetails(notificationId, bookingId) {
+async function handleViewBookingDetails(notificationId, bookingId) {
   // Mark notification as read
   markAsRead(notificationId);
 
-  // Redirect to bookings page with the specific booking
-  if (bookingId && bookingId !== "null" && bookingId !== null) {
-    window.location.href = `bookings.html?booking=${bookingId}`;
-  } else {
-    window.location.href = `bookings.html`;
+  if (!bookingId || bookingId === "null" || bookingId === null) {
+    alert("Payment details not available.");
+    return;
   }
+
+  try {
+    // Fetch booking details with payment information
+    const { data: booking, error } = await window.supabaseClient
+      .from("bookings")
+      .select(
+        `
+        *,
+        equipment:equipment_id (
+          name,
+          image_url
+        ),
+        renter:renter_id (
+          full_name,
+          email
+        )
+      `
+      )
+      .eq("booking_id", bookingId)
+      .single();
+
+    if (error || !booking) {
+      console.error("Error fetching booking:", error);
+      alert("Unable to load payment details.");
+      return;
+    }
+
+    // Show payment details modal
+    showPaymentDetailsModal(booking);
+  } catch (error) {
+    console.error("Error in handleViewBookingDetails:", error);
+    alert("Unable to load payment details.");
+  }
+}
+
+/**
+ * Show payment details modal
+ */
+function showPaymentDetailsModal(booking) {
+  // Create modal overlay
+  const modal = document.createElement("div");
+  modal.className = "payment-details-modal-overlay";
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+  `;
+
+  // Format payment date
+  const paymentDate = booking.updated_at
+    ? new Date(booking.updated_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "N/A";
+
+  // Calculate days
+  const startDate = new Date(booking.start_date);
+  const endDate = new Date(booking.end_date);
+  const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+  // Calculate breakdown
+  const basePrice = parseFloat(booking.price_per_day || 0) * days;
+  const serviceFee = basePrice * 0.1; // 10%
+  const insurance = basePrice * 0.05; // 5%
+  const totalAmount = parseFloat(booking.total_amount || 0);
+
+  // Create modal content
+  modal.innerHTML = `
+    <div class="payment-details-modal" style="
+      background: white;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    ">
+      <div style="
+        padding: 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <h2 style="
+          margin: 0;
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--text-dark);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        ">
+          <i class="fas fa-check-circle" style="color: var(--success-green);"></i>
+          Payment Details
+        </h2>
+        <button onclick="this.closest('.payment-details-modal-overlay').remove()" style="
+          background: none;
+          border: none;
+          font-size: 24px;
+          color: var(--text-gray);
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 4px;
+          transition: all 0.2s;
+        " onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='none'">
+          &times;
+        </button>
+      </div>
+      
+      <div style="padding: 24px;">
+        <!-- Payment Status -->
+        <div style="
+          background: rgba(34, 197, 94, 0.1);
+          border: 2px solid var(--success-green);
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 24px;
+          text-align: center;
+        ">
+          <div style="
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--success-green);
+            margin-bottom: 8px;
+          ">
+            GHS ${totalAmount.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </div>
+          <div style="
+            font-size: 14px;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+          ">
+            Payment Received
+          </div>
+        </div>
+
+        <!-- Booking Information -->
+        <div style="margin-bottom: 24px;">
+          <h3 style="
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <i class="fas fa-calendar-alt" style="color: var(--primary-orange);"></i>
+            Booking Information
+          </h3>
+          <div style="
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+          ">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Booking Number:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">${
+                booking.booking_number || "N/A"
+              }</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Equipment:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">${
+                booking.equipment?.name || "N/A"
+              }</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Rental Period:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">${days} ${
+    days === 1 ? "day" : "days"
+  }</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Dates:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">
+                ${startDate.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                })} - 
+                ${endDate.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+            ${
+              booking.renter
+                ? `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Renter:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">${
+                booking.renter.full_name || booking.renter.email || "N/A"
+              }</span>
+            </div>
+            `
+                : ""
+            }
+          </div>
+        </div>
+
+        <!-- Payment Breakdown -->
+        <div style="margin-bottom: 24px;">
+          <h3 style="
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <i class="fas fa-receipt" style="color: var(--primary-orange);"></i>
+            Payment Breakdown
+          </h3>
+          <div style="
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+          ">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Base Price (${days} ${
+    days === 1 ? "day" : "days"
+  }):</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">GHS ${basePrice.toLocaleString(
+                "en-US",
+                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+              )}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Service Fee (10%):</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">GHS ${serviceFee.toLocaleString(
+                "en-US",
+                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+              )}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Insurance (5%):</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">GHS ${insurance.toLocaleString(
+                "en-US",
+                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+              )}</span>
+            </div>
+            <div style="
+              border-top: 2px solid #e5e7eb;
+              padding-top: 12px;
+              margin-top: 4px;
+              display: flex;
+              justify-content: space-between;
+            ">
+              <span style="color: var(--text-dark); font-weight: 700; font-size: 16px;">Total Amount:</span>
+              <span style="color: var(--success-green); font-weight: 700; font-size: 16px;">GHS ${totalAmount.toLocaleString(
+                "en-US",
+                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+              )}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div>
+          <h3 style="
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <i class="fas fa-info-circle" style="color: var(--primary-orange);"></i>
+            Payment Information
+          </h3>
+          <div style="
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+          ">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Payment Status:</span>
+              <span style="
+                color: var(--success-green);
+                font-weight: 600;
+                font-size: 14px;
+                text-transform: uppercase;
+              ">Paid</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Payment Reference:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px; font-family: monospace;">${
+                booking.payment_reference || "N/A"
+              }</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-gray); font-size: 14px;">Payment Date:</span>
+              <span style="color: var(--text-dark); font-weight: 600; font-size: 14px;">${paymentDate}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="
+          margin-top: 24px;
+          display: flex;
+          justify-content: flex-end;
+        ">
+          <button onclick="this.closest('.payment-details-modal-overlay').remove()" style="
+            background: var(--card-white);
+            color: var(--text-dark);
+            border: 2px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+          " onmouseover="this.style.borderColor='var(--primary-orange)'; this.style.color='var(--primary-orange)'" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-dark)'">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add click outside to close
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+
+  // Add to page
+  document.body.appendChild(modal);
 }
 
 /**
