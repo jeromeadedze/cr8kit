@@ -617,6 +617,11 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
         } has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
         related_booking_id: booking.booking_id,
       });
+      
+      // Update notification badge
+      if (window.updateGlobalNotificationBadge) {
+        window.updateGlobalNotificationBadge();
+      }
     }
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -649,6 +654,11 @@ async function sendReturnNotificationEmail(bookingId) {
         } has been returned. Please confirm the return.`,
         related_booking_id: bookingId,
       });
+      
+      // Update notification badge
+      if (window.updateGlobalNotificationBadge) {
+        window.updateGlobalNotificationBadge();
+      }
     }
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -921,6 +931,27 @@ async function payBooking(bookingId) {
 
     if (updateError) {
       throw updateError;
+    }
+
+    // Create payment notification for owner
+    if (booking && booking.owner_id) {
+      try {
+        await window.supabaseClient.from("notifications").insert({
+          user_id: booking.owner_id,
+          type: "payment_received",
+          title: "Payment Received",
+          message: `Payment of GHS ${parseFloat(booking.total_amount || 0).toFixed(2)} has been received for booking ${booking.equipment?.name || "equipment"}.`,
+          related_booking_id: bookingId,
+        });
+
+        // Update notification badge
+        if (window.updateGlobalNotificationBadge) {
+          window.updateGlobalNotificationBadge();
+        }
+      } catch (notifError) {
+        console.error("Error creating payment notification:", notifError);
+        // Don't fail payment if notification fails
+      }
     }
 
     // Show success message

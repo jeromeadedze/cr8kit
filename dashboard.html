@@ -39,11 +39,23 @@
 
         <a href="list-item.html" class="btn-list-item">List Item</a>
 
+        <div class="nav-icons">
+          <a href="notifications.html" class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span
+              class="notification-badge"
+              id="navNotificationBadge"
+              style="display: none"
+            ></span>
+          </a>
+        </div>
+
         <a href="profile.html">
           <img
-            src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=40"
+            src=""
             alt="User Avatar"
             class="user-avatar"
+            data-dynamic-avatar="true"
           />
         </a>
       </div>
@@ -97,10 +109,7 @@
           <a href="browse.html" class="btn-list-item">
             <i class="fas fa-search"></i> Browse Equipment
           </a>
-          <a
-            href="bookings.html"
-            class="btn-list-item btn-outline"
-          >
+          <a href="bookings.html" class="btn-list-item btn-outline">
             <i class="fas fa-calendar"></i> My Bookings
           </a>
         </div>
@@ -109,9 +118,7 @@
       <!-- Recent Activity -->
       <div class="dashboard-section">
         <h2 class="dashboard-section-title">Recent Activity</h2>
-        <p class="empty-state">
-          No recent activity to display.
-        </p>
+        <p class="empty-state">No recent activity to display.</p>
       </div>
     </div>
 

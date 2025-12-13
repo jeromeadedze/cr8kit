@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notifications - Cr8Kit</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/supa.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="navbar-left">
+        <a href="browse.html" class="logo-nav">
+          <span>Cr8Kit</span>
+        </a>
+
+        <div class="search-container">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search cameras, lenses, lighting..."
+          />
+          <i class="fas fa-search search-icon"></i>
+        </div>
+      </div>
+
+      <div class="navbar-right">
+        <ul class="nav-links">
+          <li><a href="bookings.html" class="nav-link">My Bookings</a></li>
+          <li><a href="my-listings.html" class="nav-link">My Listings</a></li>
+        </ul>
+
+        <a href="list-item.html" class="btn-list-item">List Item</a>
+
+        <div class="nav-icons">
+          <a href="notifications.html" class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span
+              class="notification-badge"
+              id="navNotificationBadge"
+              style="display: none"
+            ></span>
+          </a>
+        </div>
+
+        <a href="profile.html">
+          <img
+            src=""
+            alt="User Avatar"
+            class="user-avatar"
+            data-dynamic-avatar="true"
+          />
+        </a>
+      </div>
+    </nav>
+
+    <div class="page-container">
+      <!-- Page Header -->
+      <div class="notifications-header">
+        <div>
+          <h1 class="page-title">Notifications</h1>
+          <p class="page-subtitle">Manage your alerts and rental activity</p>
+        </div>
+        <button
+          class="btn-mark-all-read"
+          id="markAllReadBtn"
+          onclick="markAllAsRead()"
+        >
+          <i class="fas fa-check"></i> Mark all as read
+        </button>
+      </div>
+
+      <!-- Filter Buttons -->
+      <div class="notification-filters">
+        <button
+          class="filter-btn active"
+          data-filter="all"
+          onclick="filterNotifications('all')"
+        >
+          <i class="fas fa-check"></i> All
+        </button>
+        <button
+          class="filter-btn"
+          data-filter="unread"
+          onclick="filterNotifications('unread')"
+        >
+          <i class="fas fa-envelope"></i> Unread
+        </button>
+        <button
+          class="filter-btn"
+          data-filter="booking"
+          onclick="filterNotifications('booking')"
+        >
+          <i class="fas fa-calendar"></i> Bookings
+        </button>
+        <button
+          class="filter-btn"
+          data-filter="payment"
+          onclick="filterNotifications('payment')"
+        >
+          <i class="fas fa-credit-card"></i> Payments
+        </button>
+      </div>
+
+      <!-- Notifications List -->
+      <div class="notifications-container" id="notificationsContainer">
+        <div class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading notifications...</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/notifications.js"></script>
+  </body>
+</html>

@@ -255,54 +255,105 @@ function initSignInForm() {
             password,
           });
 
-        // Reset button state
+        // Reset button state early to prevent UI freeze
         submitButton.classList.remove("loading");
         submitButton.disabled = false;
 
+        // Check for authentication errors FIRST
         if (authError) {
           console.error("Sign-in error:", authError);
           console.error("Error details:", JSON.stringify(authError, null, 2));
-          
+
+          // Ensure user is signed out if auth failed
+          await window.supabaseClient.auth.signOut();
+          localStorage.removeItem("cr8kit_profile");
+
           // Show more specific error messages
-          let errorMessage = "Invalid email or password";
-          
+          let errorMessage =
+            "Account does not exist. Please sign up to create an account.";
+
           if (authError.message) {
-            if (authError.message.includes("Email not confirmed") || 
-                authError.message.includes("email_not_confirmed")) {
-              errorMessage = "Please check your email and confirm your account before signing in. Or disable email confirmation in Supabase settings.";
-            } else if (authError.message.includes("Invalid login credentials") ||
-                       authError.message.includes("invalid_credentials")) {
-              errorMessage = "Invalid email or password. Please check your credentials.";
+            if (
+              authError.message.includes("Email not confirmed") ||
+              authError.message.includes("email_not_confirmed")
+            ) {
+              errorMessage =
+                "Please check your email and confirm your account before signing in.";
+            } else if (
+              authError.message.includes("Invalid login credentials") ||
+              authError.message.includes("invalid_credentials") ||
+              authError.message.includes("Invalid") ||
+              authError.message.includes("not found") ||
+              authError.message.includes("User not found")
+            ) {
+              errorMessage =
+                "Account does not exist. Please sign up to create an account.";
             } else {
-              errorMessage = authError.message;
+              // For any other error, default to account doesn't exist
+              errorMessage =
+                "Account does not exist. Please sign up to create an account.";
             }
           }
-          
+
           showError("email", errorMessage);
           showError("password", "");
           return;
         }
 
-        // Fetch or create user profile in users table
-        const profile = await window.getOrCreateUserProfile(
-          email,
-          authData.user?.user_metadata?.fullName || "",
-          authData.user?.user_metadata?.phone || ""
-        );
-
-        if (!profile) {
-          alert("Could not load user profile. Please try again.");
+        // Verify we have valid auth data
+        if (!authData || !authData.user) {
+          console.error("No user data returned from sign-in");
+          await window.supabaseClient.auth.signOut();
+          showError("email", "Account does not exist. Please sign up first.");
+          showError("password", "");
           return;
         }
 
-        // Store profile in localStorage
+        // Only fetch existing user profile - DO NOT create if missing
+        // This ensures sign-in only works for existing accounts
+        const { data: profile, error: profileError } =
+          await window.supabaseClient
+            .from("users")
+            .select("*")
+            .eq("email", email)
+            .single();
+
+        // If profile doesn't exist, sign out and show error
+        if (profileError || !profile) {
+          console.error("Profile fetch error:", profileError);
+          console.error("Profile not found for email:", email);
+
+          // Sign out immediately - account doesn't exist in our system
+          await window.supabaseClient.auth.signOut();
+
+          // Clear any cached data
+          localStorage.removeItem("cr8kit_profile");
+
+          showError(
+            "email",
+            "Account does not exist. Please sign up to create an account."
+          );
+          showError("password", "");
+          return;
+        }
+
+        // Verify profile has required fields
+        if (!profile.user_id || !profile.email) {
+          console.error("Invalid profile data:", profile);
+          await window.supabaseClient.auth.signOut();
+          localStorage.removeItem("cr8kit_profile");
+          showError(
+            "email",
+            "Account data is incomplete. Please contact support."
+          );
+          showError("password", "");
+          return;
+        }
+
+        // Only store profile if everything is valid
         localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
 
-        alert(
-          "Login successful! Welcome back, " +
-            (profile.full_name || email) +
-            "!"
-        );
+        // Success - redirect to browse page
         window.location.href = "browse.html";
       } catch (error) {
         console.error("Login error:", error);
@@ -522,12 +573,21 @@ function initSignUpForm() {
         if (authError) {
           console.error("Signup error:", authError);
           console.error("Error details:", JSON.stringify(authError, null, 2));
-          
+
           // Handle specific Supabase errors
-          if (authError.message && authError.message.includes("already registered") || 
-              authError.message && authError.message.includes("already exists")) {
-            showError("signupEmail", "This email is already registered. Please sign in instead.");
-          } else if (authError.message && authError.message.includes("password")) {
+          if (
+            (authError.message &&
+              authError.message.includes("already registered")) ||
+            (authError.message && authError.message.includes("already exists"))
+          ) {
+            showError(
+              "signupEmail",
+              "This email is already registered. Please sign in instead."
+            );
+          } else if (
+            authError.message &&
+            authError.message.includes("password")
+          ) {
             showError("signupPassword", "Password does not meet requirements.");
           } else if (authError.message) {
             alert("Error: " + authError.message);
@@ -551,7 +611,9 @@ function initSignUpForm() {
         );
 
         if (!profile) {
-          alert("Account created but profile setup failed. Please contact support.");
+          alert(
+            "Account created but profile setup failed. Please contact support."
+          );
           return;
         }
 
@@ -566,14 +628,11 @@ function initSignUpForm() {
 
         // Show success message
         alert(
-          "Account created successfully! Welcome to Cr8Kit, " +
-            fullName +
-            "!"
+          "Account created successfully! Welcome to Cr8Kit, " + fullName + "!"
         );
 
         // Redirect to browse page
         window.location.href = "browse.html";
-
       } catch (error) {
         // Reset button state
         submitButton.classList.remove("loading");
@@ -581,10 +640,17 @@ function initSignUpForm() {
 
         console.error("Signup error:", error);
         console.error("Error details:", JSON.stringify(error, null, 2));
-        
+
         // Show more detailed error message
-        const errorMessage = error.message || error.toString() || "An error occurred. Please try again.";
-        alert("Error: " + errorMessage + "\n\nCheck browser console (F12) for more details.");
+        const errorMessage =
+          error.message ||
+          error.toString() ||
+          "An error occurred. Please try again.";
+        alert(
+          "Error: " +
+            errorMessage +
+            "\n\nCheck browser console (F12) for more details."
+        );
       }
     }
   });

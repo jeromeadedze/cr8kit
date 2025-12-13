@@ -8,36 +8,96 @@ let pendingRequests = [];
 let currentFilter = "all";
 
 document.addEventListener("DOMContentLoaded", async function () {
-  // Update user info (avatar)
+  // Update user info (avatar) - call immediately and with retry
   if (window.updateUserInfo) {
     window.updateUserInfo();
+    // Retry after a short delay to ensure it runs
+    setTimeout(() => {
+      if (window.updateUserInfo) {
+        window.updateUserInfo();
+      }
+    }, 500);
   }
-  
+
   // Initialize summary cards with 0 values first (immediate feedback)
   updateSummaryCardsUI(0, 0, 0);
-  
+
   // Load listings from API (this will also update summary cards with real data)
   await loadListings();
-  
+
   // Load pending requests
   await loadPendingRequests();
-  
+
   // Initialize listings page
   initListingsPage();
+
+  // Final safety check: ensure stats are updated (in case of any timing issues)
+  setTimeout(async () => {
+    await updateSummaryCards();
+  }, 500);
+
+  // Additional retry for stats after page is fully loaded
+  setTimeout(async () => {
+    await updateSummaryCards();
+  }, 1500);
 });
 
 // Load listings from Supabase
 async function loadListings() {
+  const container =
+    document.querySelector(".booking-list") ||
+    document.querySelector("#listingsGrid");
+
   try {
-    const userId = await window.getCurrentUserId();
-    if (!userId) {
-      console.error("User not authenticated");
-      document.querySelector('.booking-list').innerHTML = 
-        '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">Please sign in to view your listings.</p>';
+    // Check if Supabase client is available
+    if (!window.supabaseClient) {
+      console.error("Supabase client not initialized");
+      if (container) {
+        container.innerHTML =
+          '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Database connection error. Please refresh the page.</p>';
+      }
+      updateSummaryCardsUI(0, 0, 0);
       return;
     }
 
+    // Show loading state
+    if (container) {
+      container.innerHTML =
+        '<p style="text-align: center; padding: 2rem; color: var(--text-gray);"><i class="fas fa-spinner fa-spin"></i> Loading listings...</p>';
+    }
+
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      console.error("User not authenticated");
+      if (container) {
+        container.innerHTML =
+          '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">Please sign in to view your listings. <a href="index.html" style="color: var(--primary-orange); text-decoration: underline;">Sign in here</a></p>';
+      }
+      // Set stats to 0 when not authenticated
+      updateSummaryCardsUI(0, 0, 0);
+      return;
+    }
+
+    console.log("Loading listings for user:", userId);
+
+    // Verify user exists and get role
+    const { data: userData, error: userError } = await window.supabaseClient
+      .from("users")
+      .select("user_id, role, full_name, email")
+      .eq("user_id", userId)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+    } else {
+      console.log("User data:", userData);
+      if (userData?.role !== "owner") {
+        console.warn("User is not an owner, but showing listings page anyway");
+      }
+    }
+
     // Get owner's equipment
+    console.log("Querying equipment table for owner_id:", userId);
     const { data: listings, error } = await window.supabaseClient
       .from("equipment")
       .select("*")
@@ -45,98 +105,221 @@ async function loadListings() {
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Error fetching equipment:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      console.error("Error details:", error.details);
+      console.error("Error hint:", error.hint);
+
+      // Check if it's a permissions error
+      if (
+        error.code === "PGRST116" ||
+        error.message?.includes("permission") ||
+        error.message?.includes("policy")
+      ) {
+        if (container) {
+          container.innerHTML =
+            '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Permission denied. Please check your database Row Level Security (RLS) policies.</p>';
+        }
+      }
+
       throw error;
     }
 
-    // Get active bookings for owner's equipment to determine rental status
-    const { data: activeBookings } = await window.supabaseClient
-      .from("bookings")
-      .select("equipment_id")
-      .eq("owner_id", userId)
-      .in("status", ["approved", "active", "pending"]);
+    console.log("Query successful. Found listings:", listings?.length || 0);
+    console.log("Listings data:", listings);
 
-    const rentedEquipmentIds = new Set((activeBookings || []).map(b => b.equipment_id));
+    // Check if listings is null or undefined
+    if (!listings) {
+      console.warn(
+        "Listings is null or undefined - this might indicate a permissions issue"
+      );
+      if (container) {
+        container.innerHTML =
+          '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Unable to load listings. Please check your database permissions.</p>';
+      }
+      return;
+    }
+
+    // If listings is an empty array, that's valid - user just has no listings
+    if (listings.length === 0) {
+      console.log("User has no listings - this is normal for new users");
+    }
+
+    // Get active bookings for owner's equipment to determine rental status
+    const { data: activeBookings, error: bookingsError } =
+      await window.supabaseClient
+        .from("bookings")
+        .select("equipment_id")
+        .eq("owner_id", userId)
+        .in("status", ["approved", "active", "pending"]);
+
+    if (bookingsError) {
+      console.warn("Error fetching bookings (non-critical):", bookingsError);
+    }
+
+    const rentedEquipmentIds = new Set(
+      (activeBookings || []).map((b) => b.equipment_id)
+    );
 
     // Mark equipment as rented if it has active bookings
-    allListings = (listings || []).map(listing => ({
+    allListings = (listings || []).map((listing) => ({
       ...listing,
-      is_rented: rentedEquipmentIds.has(listing.equipment_id)
+      is_rented: rentedEquipmentIds.has(listing.equipment_id),
     }));
 
+    console.log("Processed listings:", allListings.length);
+    console.log("All listings array:", allListings);
+
+    // Render listings
     renderListings(allListings);
-    
+
     // Update summary cards with fresh data
     await updateSummaryCards();
-
   } catch (error) {
     console.error("Error loading listings:", error);
-    document.querySelector('.booking-list').innerHTML = 
-      '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading listings. Please try again.</p>';
+    if (container) {
+      container.innerHTML =
+        '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading listings: ' +
+        (error.message || "Unknown error") +
+        ". Please try again.</p>";
+    }
+    // Set stats to 0 on error
+    updateSummaryCardsUI(0, 0, 0);
   }
 }
 
 // Render listings to page
 function renderListings(listings) {
-  const listingsContainer = document.querySelector('.booking-list');
-  if (!listingsContainer) return;
+  console.log("renderListings called with:", listings?.length || 0, "listings");
 
-  if (listings.length === 0) {
-    listingsContainer.innerHTML = 
-      '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">No listings found. <a href="list-item.html" style="color: var(--primary-orange);">Create your first listing</a></p>';
+  const listingsContainer =
+    document.querySelector(".booking-list") ||
+    document.querySelector("#listingsGrid");
+
+  if (!listingsContainer) {
+    console.error(
+      "Listings container not found! Tried both .booking-list and #listingsGrid"
+    );
+    console.error("Available containers:", {
+      bookingList: document.querySelector(".booking-list"),
+      listingsGrid: document.querySelector("#listingsGrid"),
+    });
     return;
   }
 
-  listingsContainer.innerHTML = listings.map(listing => createListingCard(listing)).join('');
-  
-  // Attach event listeners
-  attachListingEventListeners();
+  console.log("Container found:", listingsContainer);
+
+  if (!listings || listings.length === 0) {
+    console.log("No listings to render - showing empty state");
+    listingsContainer.innerHTML =
+      '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">No listings found. <a href="list-item.html" style="color: var(--primary-orange); text-decoration: underline;">Create your first listing</a></p>';
+    return;
+  }
+
+  try {
+    listingsContainer.innerHTML = listings
+      .map((listing) => {
+        try {
+          return createListingCard(listing);
+        } catch (cardError) {
+          console.error("Error creating listing card:", cardError, listing);
+          return ""; // Skip this listing if there's an error
+        }
+      })
+      .filter((card) => card !== "") // Remove any empty cards
+      .join("");
+
+    console.log("Listings rendered successfully");
+
+    // Attach event listeners
+    attachListingEventListeners();
+  } catch (error) {
+    console.error("Error rendering listings:", error);
+    listingsContainer.innerHTML =
+      '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error rendering listings. Please refresh the page.</p>';
+  }
 }
 
 // Create listing card HTML
 function createListingCard(listing) {
-  const isAvailable = listing.is_available;
+  // Defensive checks for required fields
+  if (!listing) {
+    console.error("Listing is null or undefined");
+    return "";
+  }
+
+  if (!listing.equipment_id) {
+    console.error("Invalid listing data - missing equipment_id:", listing);
+    return "";
+  }
+
+  console.log("Creating card for listing:", listing.equipment_id, listing.name);
+
+  const isAvailable =
+    listing.is_available !== undefined ? listing.is_available : true;
   const isRented = listing.is_rented || false;
-  
+
   // Determine status based on availability and rental status
   let statusClass, statusText, cardStatus, priceStatusClass, priceStatusText;
-  
+
   if (isRented && isAvailable) {
     // Equipment is available but currently rented
-    statusClass = 'pending';
-    statusText = 'Rented';
-    cardStatus = 'rented';
-    priceStatusClass = 'pending';
-    priceStatusText = 'Rented';
+    statusClass = "pending";
+    statusText = "Rented";
+    cardStatus = "rented";
+    priceStatusClass = "pending";
+    priceStatusText = "Rented";
   } else if (isAvailable) {
-    statusClass = 'active';
-    statusText = 'Available';
-    cardStatus = 'available';
-    priceStatusClass = 'paid';
-    priceStatusText = 'Active';
+    statusClass = "active";
+    statusText = "Available";
+    cardStatus = "available";
+    priceStatusClass = "paid";
+    priceStatusText = "Active";
   } else {
-    statusClass = 'completed';
-    statusText = 'Inactive';
-    cardStatus = 'inactive';
-    priceStatusClass = 'pending';
-    priceStatusText = 'Inactive';
+    statusClass = "completed";
+    statusText = "Inactive";
+    cardStatus = "inactive";
+    priceStatusClass = "pending";
+    priceStatusText = "Inactive";
   }
 
   // Format date
-  let listedDate = 'Unknown';
+  let listedDate = "Unknown";
   if (listing.created_at) {
-    const date = new Date(listing.created_at);
-    listedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    try {
+      const date = new Date(listing.created_at);
+      if (!isNaN(date.getTime())) {
+        listedDate = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    } catch (e) {
+      console.warn("Error formatting date:", e);
+    }
   }
 
   // Image - Fallback to placeholder if null
-  const imageUrl = listing.image_url || 'https://via.placeholder.com/120?text=No+Image';
+  const imageUrl =
+    listing.image_url || "https://via.placeholder.com/120?text=No+Image";
+
+  // Safe field access with defaults
+  const listingName = listing.name || "Unnamed Equipment";
+  const listingDescription = listing.description || "No description provided.";
+  const listingCategory = listing.category || "Uncategorized";
+  const pricePerDay = parseFloat(listing.price_per_day || 0);
 
   return `
-    <div class="booking-card" data-status="${cardStatus}" data-equipment-id="${listing.equipment_id}">
+    <div class="booking-card" data-status="${cardStatus}" data-equipment-id="${
+    listing.equipment_id
+  }">
       <img
         src="${imageUrl}"
-        alt="${listing.name}"
+        alt="${listingName}"
         class="booking-image"
+        onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=No+Image'"
       />
       <div class="booking-content">
         <div class="booking-info">
@@ -145,19 +328,22 @@ function createListingCard(listing) {
             <span>${statusText}</span>
           </div>
           <div class="booking-id">ID: #EQ-${listing.equipment_id}</div>
-          <h3 class="booking-title">${listing.name}</h3>
+          <h3 class="booking-title">${listingName}</h3>
           <p class="booking-description">
-            ${listing.description || 'No description provided.'}
+            ${listingDescription}
           </p>
           <div class="booking-meta">
-            <span><i class="fas fa-tag"></i> ${listing.category}</span>
+            <span><i class="fas fa-tag"></i> ${listingCategory}</span>
             <span><i class="fas fa-calendar"></i> Listed: ${listedDate}</span>
           </div>
         </div>
         <div class="booking-actions">
           <div class="booking-price">
             <div class="price-amount">
-              GH₵ ${listing.price_per_day.toLocaleString()}
+              GH₵ ${pricePerDay.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
               <span style="font-size: 14px; font-weight: 400; color: var(--text-gray);">/ day</span>
             </div>
             <div class="price-status ${priceStatusClass}">${priceStatusText}</div>
@@ -170,7 +356,7 @@ function createListingCard(listing) {
             >
               <input
                 type="checkbox"
-                ${isAvailable ? 'checked' : ''}
+                ${isAvailable ? "checked" : ""}
                 onchange="toggleListing(this, event)"
                 data-equipment-id="${listing.equipment_id}"
               />
@@ -183,7 +369,9 @@ function createListingCard(listing) {
             >
               <i class="fas fa-edit"></i>
             </a>
-            <button class="icon-btn" style="font-size: 16px" onclick="deleteListing(${listing.equipment_id})">
+            <button class="icon-btn" style="font-size: 16px" onclick="deleteListing(${
+              listing.equipment_id
+            })">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -195,90 +383,154 @@ function createListingCard(listing) {
 
 // Update summary cards
 async function updateSummaryCards() {
+  console.log("updateSummaryCards called");
+
   const userId = await window.getCurrentUserId();
   if (!userId) {
-    console.error("User not authenticated");
+    console.error("User not authenticated for stats");
     // Set to 0 if not authenticated
     updateSummaryCardsUI(0, 0, 0);
     return;
   }
 
+  console.log("Calculating stats for user:", userId);
+
   // Initialize with 0 values
   let totalListings = 0;
   let currentlyRented = 0;
   let totalEarnings = 0;
-  
+
   try {
     // Get all listings for owner
-    const { data: allOwnerListings, error: listingsError } = await window.supabaseClient
-      .from("equipment")
-      .select("equipment_id, is_available")
-      .eq("owner_id", userId);
+    const { data: allOwnerListings, error: listingsError } =
+      await window.supabaseClient
+        .from("equipment")
+        .select("equipment_id, is_available")
+        .eq("owner_id", userId);
 
     if (listingsError) {
-      console.error("Error fetching listings:", listingsError);
-    } else if (allOwnerListings) {
-      totalListings = allOwnerListings.length || 0;
+      console.error("Error fetching listings for stats:", listingsError);
+    } else {
+      totalListings = (allOwnerListings || []).length;
+      console.log("Total listings found:", totalListings);
     }
 
     // Get ALL bookings for owner's equipment (for stats)
-    const { data: allBookings, error: bookingsError } = await window.supabaseClient
-      .from("bookings")
-      .select("equipment_id, total_amount, payment_status, status")
-      .eq("owner_id", userId);
-    
+    const { data: allBookings, error: bookingsError } =
+      await window.supabaseClient
+        .from("bookings")
+        .select("equipment_id, total_amount, payment_status, status")
+        .eq("owner_id", userId);
+
     if (bookingsError) {
-      console.error("Error fetching bookings:", bookingsError);
-    } else if (allBookings) {
+      console.error("Error fetching bookings for stats:", bookingsError);
+    } else {
+      const bookings = allBookings || [];
+      console.log("Total bookings found:", bookings.length);
+
       // Count unique equipment items that are currently rented (active or approved bookings)
-      const activeBookings = allBookings.filter(b => 
-        b.status === "approved" || b.status === "active"
+      const activeBookings = bookings.filter(
+        (b) => b.status === "approved" || b.status === "active"
       );
-      const rentedEquipmentIds = new Set(activeBookings.map(b => b.equipment_id));
-      currentlyRented = rentedEquipmentIds.size || 0;
-      
+      const rentedEquipmentIds = new Set(
+        activeBookings.map((b) => b.equipment_id)
+      );
+      currentlyRented = rentedEquipmentIds.size;
+      console.log("Currently rented items:", currentlyRented);
+
       // Calculate total earnings from ALL paid bookings (not just active ones)
-      totalEarnings = allBookings
-        .filter(b => b.payment_status === 'paid')
+      totalEarnings = bookings
+        .filter((b) => b.payment_status === "paid")
         .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+      console.log("Total earnings:", totalEarnings);
     }
   } catch (error) {
     console.error("Error fetching stats:", error);
-    // On error, values remain 0
+    // On error, values remain 0 (already initialized)
   }
-  
-  // Update UI with calculated values
+
+  // Always update UI with calculated values (even if 0)
+  console.log("Final stats:", {
+    totalListings,
+    currentlyRented,
+    totalEarnings,
+  });
   updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings);
 }
 
 // Helper function to update summary cards UI
 function updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings) {
+  console.log("Updating summary cards UI with:", {
+    totalListings,
+    currentlyRented,
+    totalEarnings,
+  });
+
   const totalCard = document.querySelector('[data-summary="total"]');
   const rentedCard = document.querySelector('[data-summary="rented"]');
   const earningsCard = document.querySelector('[data-summary="earnings"]');
-  
+
+  console.log("Found cards:", {
+    total: !!totalCard,
+    rented: !!rentedCard,
+    earnings: !!earningsCard,
+  });
+
   if (totalCard) {
-    totalCard.textContent = totalListings;
-    console.log("Updated total listings:", totalListings);
+    totalCard.textContent = totalListings || 0;
+    console.log("✓ Updated total listings:", totalListings);
   } else {
-    console.warn("Total listings card not found");
+    console.warn("✗ Total listings card not found - retrying...");
+    // Retry after a short delay in case DOM isn't ready
+    setTimeout(() => {
+      const retryCard = document.querySelector('[data-summary="total"]');
+      if (retryCard) {
+        retryCard.textContent = totalListings || 0;
+        console.log("✓ Retry: Updated total listings:", totalListings);
+      } else {
+        console.error("✗ Retry failed: Total listings card still not found");
+      }
+    }, 100);
   }
-  
+
   if (rentedCard) {
-    rentedCard.textContent = currentlyRented;
-    console.log("Updated currently rented:", currentlyRented);
+    rentedCard.textContent = currentlyRented || 0;
+    console.log("✓ Updated currently rented:", currentlyRented);
   } else {
-    console.warn("Currently rented card not found");
+    console.warn("✗ Currently rented card not found - retrying...");
+    setTimeout(() => {
+      const retryCard = document.querySelector('[data-summary="rented"]');
+      if (retryCard) {
+        retryCard.textContent = currentlyRented || 0;
+        console.log("✓ Retry: Updated currently rented:", currentlyRented);
+      } else {
+        console.error("✗ Retry failed: Currently rented card still not found");
+      }
+    }, 100);
   }
-  
+
   if (earningsCard) {
-    earningsCard.textContent = `GH₵ ${totalEarnings.toLocaleString('en-US', {
+    const formatted = (totalEarnings || 0).toLocaleString("en-US", {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
-    console.log("Updated total earnings:", totalEarnings);
+      maximumFractionDigits: 2,
+    });
+    earningsCard.textContent = `GH₵ ${formatted}`;
+    console.log("✓ Updated total earnings:", formatted);
   } else {
-    console.warn("Total earnings card not found");
+    console.warn("✗ Total earnings card not found - retrying...");
+    setTimeout(() => {
+      const retryCard = document.querySelector('[data-summary="earnings"]');
+      if (retryCard) {
+        const formatted = (totalEarnings || 0).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        retryCard.textContent = `GH₵ ${formatted}`;
+        console.log("✓ Retry: Updated total earnings:", formatted);
+      } else {
+        console.error("✗ Retry failed: Total earnings card still not found");
+      }
+    }, 100);
   }
 }
 
@@ -286,6 +538,44 @@ function updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings) {
 function initListingsPage() {
   // Initialize filters
   initFilters();
+  
+  // Check URL parameters for tab and booking
+  const urlParams = new URLSearchParams(window.location.search);
+  const tab = urlParams.get('tab');
+  const bookingId = urlParams.get('booking');
+  
+  // If tab=requests is in URL, automatically switch to requests tab
+  if (tab === 'requests') {
+    // Wait a bit for requests to load, then switch to requests tab
+    setTimeout(() => {
+      const requestsBtn = document.querySelector('[data-filter="requests"]');
+      if (requestsBtn) {
+        requestsBtn.click();
+        
+        // If a specific booking ID is provided, scroll to it after a short delay
+        if (bookingId) {
+          setTimeout(() => {
+            const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`);
+            if (bookingCard) {
+              bookingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Highlight the card briefly
+              bookingCard.style.transition = 'box-shadow 0.3s ease';
+              bookingCard.style.boxShadow = '0 0 0 3px rgba(254, 116, 44, 0.5)';
+              setTimeout(() => {
+                bookingCard.style.boxShadow = '';
+              }, 2000);
+            }
+          }, 500);
+        }
+      }
+    }, 300);
+  }
+  
+  // Clean up URL parameters after processing (optional - keeps URL clean)
+  if (tab || bookingId) {
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+  }
 }
 
 // Initialize filter buttons
@@ -312,7 +602,8 @@ async function loadPendingRequests() {
 
     const { data: requests, error } = await window.supabaseClient
       .from("bookings")
-      .select(`
+      .select(
+        `
         *,
         equipment:equipment_id (
           equipment_id,
@@ -325,7 +616,8 @@ async function loadPendingRequests() {
           full_name,
           email
         )
-      `)
+      `
+      )
       .eq("owner_id", userId)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
@@ -356,11 +648,11 @@ function updateRequestsBadge(count) {
 }
 
 // Apply filter (exposed globally)
-window.applyFilter = function(filter) {
+window.applyFilter = function (filter) {
   currentFilter = filter;
   const listingCards = document.querySelectorAll(".booking-card");
   const filterButtons = document.querySelectorAll(".filter-btn");
-  const listingsContainer = document.querySelector('.booking-list');
+  const listingsContainer = document.querySelector(".booking-list");
 
   // Update active filter button
   filterButtons.forEach((btn) => {
@@ -376,7 +668,7 @@ window.applyFilter = function(filter) {
   } else {
     // Re-render listings to show them again (in case we were on requests)
     renderListings(allListings);
-    
+
     // Apply filter to listings
     const updatedCards = document.querySelectorAll(".booking-card");
     updatedCards.forEach((card) => {
@@ -400,15 +692,15 @@ window.applyFilter = function(filter) {
 // Approve request with pickup details
 async function approveRequest(bookingId) {
   try {
-    const request = pendingRequests.find(r => r.booking_id === bookingId);
+    const request = pendingRequests.find((r) => r.booking_id === bookingId);
     if (!request) {
       alert("Request not found.");
       return;
     }
 
     // Create modal for pickup details
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    const modal = document.createElement("div");
+    modal.className = "modal-overlay";
     modal.style.cssText = `
       position: fixed;
       top: 0;
@@ -472,12 +764,14 @@ async function approveRequest(bookingId) {
     document.body.appendChild(modal);
 
     // Handle form submission
-    const form = modal.querySelector('#approveRequestForm');
-    form.addEventListener('submit', async (e) => {
+    const form = modal.querySelector("#approveRequestForm");
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
-      const pickupLocation = document.getElementById('pickupLocation').value.trim();
-      const pickupTime = document.getElementById('pickupTime').value.trim();
+
+      const pickupLocation = document
+        .getElementById("pickupLocation")
+        .value.trim();
+      const pickupTime = document.getElementById("pickupTime").value.trim();
 
       if (!pickupLocation || !pickupTime) {
         alert("Please fill in all required fields.");
@@ -490,7 +784,7 @@ async function approveRequest(bookingId) {
 
       try {
         const userId = await window.getCurrentUserId();
-        
+
         // Update booking status
         const { error: updateError } = await window.supabaseClient
           .from("bookings")
@@ -505,9 +799,11 @@ async function approveRequest(bookingId) {
         if (updateError) throw updateError;
 
         // Fetch updated booking with all details for email
-        const { data: updatedBooking, error: fetchError } = await window.supabaseClient
-          .from("bookings")
-          .select(`
+        const { data: updatedBooking, error: fetchError } =
+          await window.supabaseClient
+            .from("bookings")
+            .select(
+              `
             *,
             equipment:equipment_id (
               equipment_id,
@@ -520,23 +816,30 @@ async function approveRequest(bookingId) {
               full_name,
               email
             )
-          `)
-          .eq("booking_id", bookingId)
-          .single();
+          `
+            )
+            .eq("booking_id", bookingId)
+            .single();
 
         if (fetchError) throw fetchError;
 
         // Send email notification with receipt details
-        await sendBookingApprovalEmail(updatedBooking, pickupLocation, pickupTime);
+        await sendBookingApprovalEmail(
+          updatedBooking,
+          pickupLocation,
+          pickupTime
+        );
 
-        alert("Booking approved! Pickup details have been sent to the renter's email.");
-        
+        alert(
+          "Booking approved! Pickup details have been sent to the renter's email."
+        );
+
         // Remove modal
         document.body.removeChild(modal);
-        
+
         // Reload requests
         await loadPendingRequests();
-        
+
         // If we're on requests view, refresh it; otherwise just update badge
         if (currentFilter === "requests") {
           renderRequests();
@@ -544,14 +847,17 @@ async function approveRequest(bookingId) {
       } catch (error) {
         console.error("Error approving request:", error);
         console.error("Error details:", error);
-        alert("An error occurred. Please try again. Error: " + (error.message || "Unknown error"));
+        alert(
+          "An error occurred. Please try again. Error: " +
+            (error.message || "Unknown error")
+        );
         submitBtn.disabled = false;
         submitBtn.textContent = "Approve & Send";
       }
     });
 
     // Close modal on overlay click
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         closeApproveModal();
       }
@@ -564,7 +870,7 @@ async function approveRequest(bookingId) {
 
 // Close approve modal
 function closeApproveModal() {
-  const modal = document.querySelector('.modal-overlay');
+  const modal = document.querySelector(".modal-overlay");
   if (modal) {
     document.body.removeChild(modal);
   }
@@ -572,7 +878,9 @@ function closeApproveModal() {
 
 // Reject request
 async function rejectRequest(bookingId) {
-  const reason = prompt("Please provide a reason for rejecting this booking (optional):");
+  const reason = prompt(
+    "Please provide a reason for rejecting this booking (optional):"
+  );
   if (reason === null) return; // User cancelled
 
   if (!confirm("Are you sure you want to reject this booking request?")) {
@@ -581,7 +889,7 @@ async function rejectRequest(bookingId) {
 
   try {
     const userId = await window.getCurrentUserId();
-    
+
     const { error } = await window.supabaseClient
       .from("bookings")
       .update({
@@ -594,10 +902,10 @@ async function rejectRequest(bookingId) {
     if (error) throw error;
 
     alert("Booking request rejected.");
-    
+
     // Reload requests
     await loadPendingRequests();
-    
+
     // If we're on requests view, refresh it; otherwise just update badge
     if (currentFilter === "requests") {
       renderRequests();
@@ -613,33 +921,38 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
   try {
     const renter = booking.renter || {};
     const equipment = booking.equipment || {};
-    
+
     if (!renter.email) {
       console.warn("No email address for renter, skipping email");
       return;
     }
 
     // Format dates
-    const startDate = new Date(booking.start_date).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    const startDate = new Date(booking.start_date).toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
-    const endDate = new Date(booking.end_date).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    const endDate = new Date(booking.end_date).toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
-    const pickupDate = new Date(booking.start_date).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    const pickupDate = new Date(booking.start_date).toLocaleDateString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }
+    );
 
     // Calculate breakdown
-    const basePrice = parseFloat(booking.price_per_day || 0) * parseFloat(booking.total_days || 0);
+    const basePrice =
+      parseFloat(booking.price_per_day || 0) *
+      parseFloat(booking.total_days || 0);
     const serviceFee = basePrice * 0.1; // 10% service fee
     const insurance = basePrice * 0.05; // 5% insurance
     const totalAmount = parseFloat(booking.total_amount || 0);
@@ -677,12 +990,14 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
             <div class="receipt">
               <div class="receipt-header">
                 <h2 style="margin: 0; color: #fe742c;">Booking Receipt</h2>
-                <p style="margin: 5px 0; color: #666;">Booking #${booking.booking_number || 'N/A'}</p>
+                <p style="margin: 5px 0; color: #666;">Booking #${
+                  booking.booking_number || "N/A"
+                }</p>
               </div>
               
               <div class="receipt-row">
                 <span><strong>Equipment:</strong></span>
-                <span>${equipment.name || 'Equipment'}</span>
+                <span>${equipment.name || "Equipment"}</span>
               </div>
               
               <div class="receipt-row">
@@ -692,12 +1007,16 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
               
               <div class="receipt-row">
                 <span><strong>Duration:</strong></span>
-                <span>${booking.total_days || 0} ${booking.total_days === 1 ? 'day' : 'days'}</span>
+                <span>${booking.total_days || 0} ${
+      booking.total_days === 1 ? "day" : "days"
+    }</span>
               </div>
               
               <div class="receipt-row">
                 <span><strong>Price per Day:</strong></span>
-                <span>GHS ${parseFloat(booking.price_per_day || 0).toFixed(2)}</span>
+                <span>GHS ${parseFloat(booking.price_per_day || 0).toFixed(
+                  2
+                )}</span>
               </div>
               
               <div class="receipt-row">
@@ -736,7 +1055,9 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
             </ol>
             
             <div style="text-align: center;">
-              <a href="${window.location.origin}/bookings.html" class="button">View Booking Details</a>
+              <a href="${
+                window.location.origin
+              }/bookings.html" class="button">View Booking Details</a>
             </div>
             
             <p>If you have any questions, please contact the equipment owner or our support team.</p>
@@ -758,9 +1079,16 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
           user_id: renter.user_id,
           type: "booking_approved",
           title: "Booking Approved",
-          message: `Your booking for ${equipment.name || "equipment"} has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
+          message: `Your booking for ${
+            equipment.name || "equipment"
+          } has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
           related_booking_id: booking.booking_id,
         });
+        
+        // Update notification badge
+        if (window.updateGlobalNotificationBadge) {
+          window.updateGlobalNotificationBadge();
+        }
       } catch (notifError) {
         console.warn("Could not create notification:", notifError);
         // Continue even if notification fails
@@ -769,17 +1097,25 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
 
     // Try to send email via Supabase Edge Function (if configured)
     try {
-      const { data, error } = await window.supabaseClient.functions.invoke('send-email', {
-        body: {
-          to: renter.email,
-          subject: `Booking Approved - ${equipment.name || "Equipment"} - ${booking.booking_number || ""}`,
-          html: emailHtml,
-          type: 'booking_approved'
+      const { data, error } = await window.supabaseClient.functions.invoke(
+        "send-email",
+        {
+          body: {
+            to: renter.email,
+            subject: `Booking Approved - ${equipment.name || "Equipment"} - ${
+              booking.booking_number || ""
+            }`,
+            html: emailHtml,
+            type: "booking_approved",
+          },
         }
-      });
+      );
 
       if (error) {
-        console.warn("Edge function email failed, logging email details:", error);
+        console.warn(
+          "Edge function email failed, logging email details:",
+          error
+        );
         // Fall through to console log
       } else {
         console.log("Email sent successfully via Edge Function");
@@ -795,16 +1131,20 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
     console.log("BOOKING APPROVAL EMAIL (Send via your email service)");
     console.log("=".repeat(60));
     console.log("To:", renter.email);
-    console.log("Subject:", `Booking Approved - ${equipment.name || "Equipment"} - ${booking.booking_number || ""}`);
+    console.log(
+      "Subject:",
+      `Booking Approved - ${equipment.name || "Equipment"} - ${
+        booking.booking_number || ""
+      }`
+    );
     console.log("HTML Content:", emailHtml);
     console.log("=".repeat(60));
-    
+
     // You can copy the HTML above and send via:
     // - Resend API
     // - SendGrid API
     // - Mailgun API
     // - Or any other email service
-
   } catch (error) {
     console.error("Error sending approval email:", error);
     // Don't fail the approval if email fails
@@ -825,7 +1165,7 @@ async function toggleListing(checkbox, event) {
     event.preventDefault();
   }
 
-  const equipmentId = checkbox.getAttribute('data-equipment-id');
+  const equipmentId = checkbox.getAttribute("data-equipment-id");
   const isAvailable = checkbox.checked;
 
   try {
@@ -852,9 +1192,9 @@ async function toggleListing(checkbox, event) {
     // Update availability
     const { error } = await window.supabaseClient
       .from("equipment")
-      .update({ 
+      .update({
         is_available: isAvailable,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("equipment_id", equipmentId);
 
@@ -885,15 +1225,16 @@ async function toggleListing(checkbox, event) {
       }
       card.setAttribute("data-status", "inactive");
     }
-    
+
     // Update listing in array
-    const listing = allListings.find(l => l.equipment_id === parseInt(equipmentId));
+    const listing = allListings.find(
+      (l) => l.equipment_id === parseInt(equipmentId)
+    );
     if (listing) {
       listing.is_available = isAvailable;
     }
-    
-    await updateSummaryCards();
 
+    await updateSummaryCards();
   } catch (error) {
     console.error("Error updating listing:", error);
     checkbox.checked = !isAvailable;
@@ -909,7 +1250,11 @@ function editListing(equipmentId) {
 
 // Delete listing
 async function deleteListing(equipmentId) {
-  if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
+  if (
+    !confirm(
+      "Are you sure you want to delete this listing? This action cannot be undone."
+    )
+  ) {
     return;
   }
 
@@ -944,7 +1289,6 @@ async function deleteListing(equipmentId) {
 
     alert("Listing deleted successfully");
     loadListings(); // Reload listings
-
   } catch (error) {
     console.error("Error deleting listing:", error);
     alert("An error occurred. Please try again.");
@@ -953,17 +1297,19 @@ async function deleteListing(equipmentId) {
 
 // Render booking requests
 function renderRequests() {
-  const listingsContainer = document.querySelector('.booking-list');
+  const listingsContainer = document.querySelector(".booking-list");
   if (!listingsContainer) return;
 
   if (pendingRequests.length === 0) {
-    listingsContainer.innerHTML = 
+    listingsContainer.innerHTML =
       '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">No pending booking requests.</p>';
     return;
   }
 
-  listingsContainer.innerHTML = pendingRequests.map(request => createRequestCard(request)).join('');
-  
+  listingsContainer.innerHTML = pendingRequests
+    .map((request) => createRequestCard(request))
+    .join("");
+
   // Attach event listeners for approve/reject buttons
   attachRequestEventListeners();
 }
@@ -972,24 +1318,25 @@ function renderRequests() {
 function createRequestCard(request) {
   const equipment = request.equipment || {};
   const renter = request.renter || {};
-  const imageUrl = equipment.image_url || 'https://via.placeholder.com/200x150?text=No+Image';
-  
-  const startDate = new Date(request.start_date).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
+  const imageUrl =
+    equipment.image_url || "https://via.placeholder.com/200x150?text=No+Image";
+
+  const startDate = new Date(request.start_date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
-  const endDate = new Date(request.end_date).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
+  const endDate = new Date(request.end_date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 
   return `
     <div class="booking-card" data-booking-id="${request.booking_id}">
       <img
         src="${imageUrl}"
-        alt="${equipment.name || 'Equipment'}"
+        alt="${equipment.name || "Equipment"}"
         class="booking-image"
       />
       <div class="booking-content">
@@ -999,21 +1346,27 @@ function createRequestCard(request) {
             <span>Pending Request</span>
           </div>
           <div class="booking-id">Booking #${request.booking_number}</div>
-          <h3 class="booking-title">${equipment.name || 'Unknown Equipment'}</h3>
+          <h3 class="booking-title">${
+            equipment.name || "Unknown Equipment"
+          }</h3>
           <p class="booking-description">
-            Request from: <strong>${renter.full_name || renter.email || 'Unknown'}</strong>
+            Request from: <strong>${
+              renter.full_name || renter.email || "Unknown"
+            }</strong>
           </p>
           <div class="booking-meta">
             <span><i class="fas fa-calendar"></i> ${startDate} - ${endDate}</span>
-            <span><i class="fas fa-clock"></i> ${request.total_days} ${request.total_days === 1 ? 'day' : 'days'}</span>
+            <span><i class="fas fa-clock"></i> ${request.total_days} ${
+    request.total_days === 1 ? "day" : "days"
+  }</span>
           </div>
         </div>
         <div class="booking-actions">
           <div class="booking-price">
             <div class="price-amount">
-              GH₵ ${parseFloat(request.total_amount).toLocaleString('en-US', {
+              GH₵ ${parseFloat(request.total_amount).toLocaleString("en-US", {
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                maximumFractionDigits: 2,
               })}
             </div>
             <div class="price-status pending">Awaiting Approval</div>

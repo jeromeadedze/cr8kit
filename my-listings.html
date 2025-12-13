@@ -39,11 +39,23 @@
 
         <a href="list-item.html" class="btn-list-item">List Item</a>
 
+        <div class="nav-icons">
+          <a href="notifications.html" class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span
+              class="notification-badge"
+              id="navNotificationBadge"
+              style="display: none"
+            ></span>
+          </a>
+        </div>
+
         <a href="profile.html">
           <img
-            src="https://ui-avatars.com/api/?name=Kwame+Mensah&background=fe742c&color=fff&size=40"
+            src=""
             alt="User Avatar"
             class="user-avatar"
+            data-dynamic-avatar="true"
           />
         </a>
       </div>
@@ -98,37 +110,22 @@
       <div class="listings-controls" style="margin-bottom: var(--spacing-lg)">
         <div style="flex: 1"></div>
         <div class="listings-filters">
-          <button
-            class="filter-btn active"
-            data-filter="all"
-          >
-            All Items
-          </button>
-          <button
-            class="filter-btn"
-            data-filter="active"
-          >
-            Active
-          </button>
-          <button
-            class="filter-btn"
-            data-filter="booked"
-          >
-            Booked
-          </button>
-          <button
-            class="filter-btn"
-            data-filter="drafts"
-          >
-            Drafts
-          </button>
+          <button class="filter-btn active" data-filter="all">All Items</button>
+          <button class="filter-btn" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="booked">Booked</button>
+          <button class="filter-btn" data-filter="drafts">Drafts</button>
           <button
             class="filter-btn"
             data-filter="requests"
             id="requestsFilterBtn"
           >
             Requests
-            <span class="notification-badge" id="requestsBadge" style="display: none;">0</span>
+            <span
+              class="notification-badge"
+              id="requestsBadge"
+              style="display: none"
+              >0</span
+            >
           </button>
         </div>
       </div>

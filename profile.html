@@ -40,6 +40,17 @@
 
         <a href="list-item.html" class="btn-list-item">List Item</a>
 
+        <div class="nav-icons">
+          <a href="notifications.html" class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span
+              class="notification-badge"
+              id="navNotificationBadge"
+              style="display: none"
+            ></span>
+          </a>
+        </div>
+
         <a href="profile.html">
           <img
             src="https://ui-avatars.com/api/?name=User&background=fe742c&color=fff&size=40"
@@ -56,9 +67,11 @@
         <!-- User Profile Card -->
         <div class="profile-card">
           <img
-            src="https://ui-avatars.com/api/?name=User&background=fe742c&color=fff&size=120"
-            alt="User"
+            src=""
+            alt="User Avatar"
             class="profile-avatar-large"
+            data-dynamic-avatar="true"
+            data-size="120"
           />
           <h2 class="profile-name">Loading...</h2>
           <div class="profile-rating">
@@ -335,56 +348,64 @@
     </div>
 
     <script src="js/profile.js"></script>
-    
+
     <!-- Backup inline script for sign out button -->
     <script>
       // Immediate initialization as backup
-      (function() {
+      (function () {
         function setupSignOutButton() {
-          const btn = document.getElementById('signOutBtn');
+          const btn = document.getElementById("signOutBtn");
           if (btn && !btn.dataset.initialized) {
-            btn.dataset.initialized = 'true';
-            console.log('Backup: Setting up sign out button');
-            
-            btn.onclick = function(e) {
-              console.log('Backup: Button clicked via inline script');
+            btn.dataset.initialized = "true";
+            console.log("Backup: Setting up sign out button");
+
+            btn.onclick = function (e) {
+              console.log("Backup: Button clicked via inline script");
               e.preventDefault();
               e.stopPropagation();
-              
-              if (typeof window.handleSignOut === 'function') {
+
+              if (typeof window.handleSignOut === "function") {
                 window.handleSignOut(e);
               } else {
-                console.error('Backup: handleSignOut not available, trying direct sign out...');
-                
+                console.error(
+                  "Backup: handleSignOut not available, trying direct sign out..."
+                );
+
                 // Fallback: direct sign out
-                if (confirm('Are you sure you want to sign out?')) {
+                if (confirm("Are you sure you want to sign out?")) {
                   if (window.supabaseClient) {
-                    window.supabaseClient.auth.signOut().then(function() {
-                      localStorage.clear();
-                      sessionStorage.clear();
-                      window.location.replace('index.html');
-                    }).catch(function(err) {
-                      console.error('Sign out error:', err);
-                      alert('Error signing out: ' + (err.message || 'Please try again.'));
-                    });
+                    window.supabaseClient.auth
+                      .signOut()
+                      .then(function () {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace("index.html");
+                      })
+                      .catch(function (err) {
+                        console.error("Sign out error:", err);
+                        alert(
+                          "Error signing out: " +
+                            (err.message || "Please try again.")
+                        );
+                      });
                   } else {
                     localStorage.clear();
                     sessionStorage.clear();
-                    window.location.replace('index.html');
+                    window.location.replace("index.html");
                   }
                 }
               }
             };
           }
         }
-        
+
         // Try immediately
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', setupSignOutButton);
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", setupSignOutButton);
         } else {
           setupSignOutButton();
         }
-        
+
         // Also try after a delay as backup
         setTimeout(setupSignOutButton, 1000);
       })();

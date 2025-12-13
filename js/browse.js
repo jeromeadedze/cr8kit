@@ -22,82 +22,7 @@ function getOptimizedImageUrl(publicId, width = 280, height = 200) {
   return `https://res.cloudinary.com/dpfsqrccq/image/upload/${transformations}/${publicId}`;
 }
 
-// Sample equipment data (replace with API call)
-// Note: In production, these would have Cloudinary public_ids
-const sampleEquipment = [
-  {
-    id: 1,
-    name: "Sony A7S III Body",
-    category: "Cameras",
-    image: getOptimizedImageUrl("cr8kit/equipment/sony-a7s-iii", 280, 200),
-    rating: 4.9,
-    location: "Osu, Accra",
-    owner: "Kojo Studios",
-    price: 450,
-    verified: true,
-    isNew: false,
-  },
-  {
-    id: 2,
-    name: "Aputure 300d II Set",
-    category: "Lighting",
-    image: getOptimizedImageUrl("cr8kit/equipment/aputure-300d", 280, 200),
-    rating: 5.0,
-    location: "East Legon",
-    owner: "Lens Queen",
-    price: 300,
-    verified: false,
-    isNew: true,
-  },
-  {
-    id: 3,
-    name: "DJI Mavic 3 Cine",
-    category: "Drones",
-    image: getOptimizedImageUrl("cr8kit/equipment/dji-mavic-3", 280, 200),
-    rating: 4.8,
-    location: "Kumasi Central",
-    owner: "Sky High",
-    price: 850,
-    verified: false,
-    isNew: false,
-  },
-  {
-    id: 4,
-    name: "Rode NTG3 Shotgun",
-    category: "Audio",
-    image: getOptimizedImageUrl("cr8kit/equipment/rode-ntg3", 280, 200),
-    rating: 4.7,
-    location: "Tema",
-    owner: "Audio Pro",
-    price: 150,
-    verified: false,
-    isNew: true,
-  },
-  {
-    id: 5,
-    name: "Canon RF 24-70mm",
-    category: "Cameras",
-    image: getOptimizedImageUrl("cr8kit/equipment/canon-rf-24-70", 280, 200),
-    rating: 5.0,
-    location: "Cantonments",
-    owner: "Kojo Studios",
-    price: 220,
-    verified: true,
-    isNew: false,
-  },
-  {
-    id: 6,
-    name: "DJI Ronin RS3 Pro",
-    category: "Accessories",
-    image: getOptimizedImageUrl("cr8kit/equipment/dji-ronin-rs3", 280, 200),
-    rating: 4.7,
-    location: "Spintex",
-    owner: "Motion Gh",
-    price: 350,
-    verified: false,
-    isNew: false,
-  },
-];
+// Sample equipment data removed - all data now loads dynamically from Supabase
 
 // Initialize page
 document.addEventListener("DOMContentLoaded", function () {
@@ -237,17 +162,14 @@ async function loadEquipment() {
       console.error("Error loading equipment:", error);
       // Fallback to sample data ONLY if we are on page 1 and really failed significantly (e.g. offline)
       // Otherwise showing sample data mixed with real data is confusing.
-      // For now, let's just show the error in console or toast.
+      // Show empty state on error instead of sample data
       if (currentPage === 1 && grid.innerHTML === "") {
-        // Maybe show empty state instead of sample data?
-        // But sticking to original behavior of falling back to sample data for demo purposes might be desired.
-        // Let's keep sample data loading if it was purely empty.
-        if (sampleEquipment.length > 0) {
-          sampleEquipment.forEach((item) => {
-            const card = createEquipmentCard(item);
-            grid.appendChild(card);
-          });
-        }
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+            <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--text-gray); margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="color: var(--text-gray); font-size: 16px;">Unable to load equipment. Please try again later.</p>
+          </div>
+        `;
       }
       isLoading = false;
     });

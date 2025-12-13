@@ -6,9 +6,14 @@
 let uploadedImages = {}; // Store uploaded image data by slot number
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Update user info (navbar avatar)
+  // Update user info (navbar avatar) - with retry
   if (window.updateUserInfo) {
     window.updateUserInfo();
+    setTimeout(() => {
+      if (window.updateUserInfo) {
+        window.updateUserInfo();
+      }
+    }, 300);
   }
 
   // Initialize photo upload handlers
@@ -19,6 +24,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialize preview modal event listeners
   initPreviewModal();
+
+  // Check if editing existing listing
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId = urlParams.get("edit");
+  if (editId) {
+    loadExistingListing(editId);
+  } else {
+    // Load draft if exists (only if not editing)
+    loadDraft();
+  }
 });
 
 // Initialize photo uploads
@@ -184,11 +199,37 @@ function initFormHandlers() {
 
 // Save draft
 function saveDraft() {
-  const formData = collectFormData();
-  console.log("Saving draft:", formData);
+  try {
+    const formData = collectFormData();
+    console.log("Saving draft:", formData);
 
-  // In real app, this would save to backend
-  alert("Draft saved successfully!");
+    // Save to localStorage
+    const draftKey = "cr8kit_draft_listing";
+    const draftData = {
+      ...formData,
+      savedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(draftKey, JSON.stringify(draftData));
+
+    // Show success message
+    const saveBtn = document.querySelector(".btn-save-draft");
+    const originalText = saveBtn ? saveBtn.textContent : "Save Draft";
+
+    if (saveBtn) {
+      saveBtn.textContent = "Saved!";
+      saveBtn.style.backgroundColor = "#28a745";
+      setTimeout(() => {
+        saveBtn.textContent = originalText;
+        saveBtn.style.backgroundColor = "";
+      }, 2000);
+    } else {
+      alert("Draft saved successfully!");
+    }
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    alert("Failed to save draft. Please try again.");
+  }
 }
 
 // Preview listing
@@ -552,6 +593,9 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
 
     alert("Listing " + (isEdit ? "updated" : "published") + " successfully!");
 
+    // Clear draft after successful publish
+    localStorage.removeItem("cr8kit_draft_listing");
+
     // Redirect to listings page
     window.location.href = "my-listings.html";
   } catch (error) {
@@ -561,6 +605,184 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
     }
     console.error("Publish error:", error);
     alert("Error: " + (error.message || "Failed to publish listing"));
+  }
+}
+
+// Load existing listing for editing
+async function loadExistingListing(equipmentId) {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      alert("Please sign in to edit listings.");
+      window.location.href = "my-listings.html";
+      return;
+    }
+
+    // Fetch equipment details
+    const { data: equipment, error } = await window.supabaseClient
+      .from("equipment")
+      .select("*")
+      .eq("equipment_id", equipmentId)
+      .single();
+
+    if (error || !equipment) {
+      alert("Equipment not found or you don't have permission to edit it.");
+      window.location.href = "my-listings.html";
+      return;
+    }
+
+    // Verify ownership
+    if (equipment.owner_id !== userId) {
+      alert("You don't have permission to edit this listing.");
+      window.location.href = "my-listings.html";
+      return;
+    }
+
+    // Populate form fields
+    document.getElementById("listingTitle").value = equipment.name || "";
+    document.getElementById("category").value = equipment.category || "cameras";
+    document.getElementById("description").value = equipment.description || "";
+    document.getElementById("dailyRate").value = equipment.price_per_day || "";
+    document.getElementById("pickupLocation").value = equipment.location || "";
+    document.getElementById("activeListing").checked =
+      equipment.is_available || false;
+
+    // Fetch and populate images
+    const { data: images } = await window.supabaseClient
+      .from("equipment_images")
+      .select("image_url, is_primary")
+      .eq("equipment_id", equipmentId)
+      .order("is_primary", { ascending: false });
+
+    if (images && images.length > 0) {
+      images.forEach((img, index) => {
+        const slotNumber = index + 1;
+        if (slotNumber <= 3) {
+          uploadedImages[slotNumber] = {
+            url: img.image_url,
+            publicId: img.image_url, // Use URL as publicId for existing images
+            thumbnailUrl: img.image_url,
+          };
+
+          const slot = document.getElementById(`photoSlot${slotNumber}`);
+          if (slot) {
+            slot.classList.add("has-image");
+            const coverButton =
+              slotNumber === 1
+                ? '<button class="photo-cover-btn">COVER</button>'
+                : "";
+            slot.innerHTML = `
+              <img src="${img.image_url}" alt="Uploaded photo" class="uploaded-photo">
+              <button class="photo-remove-btn" onclick="removePhoto(${slotNumber})">
+                <i class="fas fa-times"></i>
+              </button>
+              ${coverButton}
+            `;
+          }
+        }
+      });
+    }
+
+    // Update page title
+    document.querySelector(".breadcrumb-current").textContent = "Edit Listing";
+    document.querySelector(".list-item-title").textContent =
+      "Edit Your Listing";
+
+    // Update publish button text
+    const publishBtn = document.querySelector(".btn-publish");
+    if (publishBtn) {
+      publishBtn.textContent = "Update Listing";
+    }
+  } catch (error) {
+    console.error("Error loading listing:", error);
+    alert("Error loading listing. Please try again.");
+    window.location.href = "my-listings.html";
+  }
+}
+
+// Load draft from localStorage
+function loadDraft() {
+  try {
+    const draftKey = "cr8kit_draft_listing";
+    const draftData = localStorage.getItem(draftKey);
+
+    if (draftData) {
+      const draft = JSON.parse(draftData);
+
+      // Ask user if they want to load the draft
+      const shouldLoad = confirm(
+        "You have a saved draft. Would you like to load it? (Click Cancel to start fresh)"
+      );
+
+      if (shouldLoad) {
+        // Restore form fields
+        if (draft.title) {
+          document.getElementById("listingTitle").value = draft.title;
+        }
+        if (draft.category) {
+          document.getElementById("category").value = draft.category;
+        }
+        if (draft.brand) {
+          document.getElementById("brand").value = draft.brand;
+        }
+        if (draft.model) {
+          document.getElementById("model").value = draft.model;
+        }
+        if (draft.description) {
+          document.getElementById("description").value = draft.description;
+        }
+        if (draft.dailyRate) {
+          document.getElementById("dailyRate").value = draft.dailyRate;
+        }
+        if (draft.replacementValue) {
+          document.getElementById("replacementValue").value =
+            draft.replacementValue;
+        }
+        if (draft.pickupLocation) {
+          document.getElementById("pickupLocation").value =
+            draft.pickupLocation;
+        }
+        if (draft.activeListing !== undefined) {
+          document.getElementById("activeListing").checked =
+            draft.activeListing;
+        }
+
+        // Restore images if they exist
+        if (draft.images && draft.images.length > 0) {
+          draft.images.forEach((img, index) => {
+            const slotNumber = index + 1;
+            if (slotNumber <= 3) {
+              uploadedImages[slotNumber] = {
+                url: img.url,
+                publicId: img.publicId,
+                thumbnailUrl: img.thumbnailUrl || img.url,
+              };
+
+              const slot = document.getElementById(`photoSlot${slotNumber}`);
+              if (slot) {
+                slot.classList.add("has-image");
+                const coverButton =
+                  slotNumber === 1
+                    ? '<button class="photo-cover-btn">COVER</button>'
+                    : "";
+                slot.innerHTML = `
+                  <img src="${uploadedImages[slotNumber].thumbnailUrl}" alt="Uploaded photo" class="uploaded-photo">
+                  <button class="photo-remove-btn" onclick="removePhoto(${slotNumber})">
+                    <i class="fas fa-times"></i>
+                  </button>
+                  ${coverButton}
+                `;
+              }
+            }
+          });
+        }
+      } else {
+        // Clear draft if user doesn't want to load it
+        localStorage.removeItem(draftKey);
+      }
+    }
+  } catch (error) {
+    console.error("Error loading draft:", error);
   }
 }
 

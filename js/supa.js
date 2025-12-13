@@ -155,23 +155,24 @@ window.updateUserInfo = async function () {
       welcomeTitle.textContent = `Welcome Back, ${firstName}.`;
     }
 
-    // Update all avatars with user's name
-    const avatarImgs = document.querySelectorAll(".user-avatar");
-    avatarImgs.forEach((avatarImg) => {
-      avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        profile.full_name || profile.email
-      )}&background=fe742c&color=fff&size=40`;
-      avatarImg.alt = profile.full_name || profile.email;
-    });
-
-    // Update larger avatars (like in equipment details)
-    const largeAvatars = document.querySelectorAll(
-      'img[src*="ui-avatars.com"][src*="size=60"]'
+    // Update all avatars with user's name (using data-dynamic-avatar attribute)
+    const avatarImgs = document.querySelectorAll(
+      '[data-dynamic-avatar="true"], .user-avatar, .host-avatar, .profile-avatar-large'
     );
-    largeAvatars.forEach((avatarImg) => {
+    avatarImgs.forEach((avatarImg) => {
+      // Get size from data-size attribute or determine from class
+      let size = 40; // default
+      if (avatarImg.dataset.size) {
+        size = parseInt(avatarImg.dataset.size, 10);
+      } else if (avatarImg.classList.contains("profile-avatar-large")) {
+        size = 120;
+      } else if (avatarImg.classList.contains("host-avatar")) {
+        size = 60;
+      }
+      
       avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
         profile.full_name || profile.email
-      )}&background=fe742c&color=fff&size=60`;
+      )}&background=fe742c&color=fff&size=${size}`;
       avatarImg.alt = profile.full_name || profile.email;
     });
 
@@ -190,6 +191,72 @@ window.updateUserInfo = async function () {
     console.error("Error updating user info:", error);
   }
 };
+
+/**
+ * Update notification badge globally
+ * This function can be called from any page to update the notification badge
+ */
+window.updateGlobalNotificationBadge = async function () {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      // Hide badge if not authenticated
+      const badges = document.querySelectorAll('#navNotificationBadge');
+      badges.forEach(badge => badge.style.display = 'none');
+      return;
+    }
+
+    // If on notifications page, don't show badge
+    if (window.location.pathname.includes('notifications.html')) {
+      const badges = document.querySelectorAll('#navNotificationBadge');
+      badges.forEach(badge => badge.style.display = 'none');
+      return;
+    }
+
+    // Fetch unread notifications count
+    const { data: notifications, error } = await window.supabaseClient
+      .from("notifications")
+      .select("notification_id")
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Error fetching notification count:", error);
+      return;
+    }
+
+    const unreadCount = notifications?.length || 0;
+    const badges = document.querySelectorAll('#navNotificationBadge');
+    
+    badges.forEach(badge => {
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    });
+  } catch (error) {
+    console.error("Error updating notification badge:", error);
+  }
+};
+
+// Update badge on page load
+document.addEventListener("DOMContentLoaded", function () {
+  // Only update if notifications.js is not loaded (to avoid duplicate calls)
+  if (!window.updateNotificationBadge) {
+    setTimeout(() => {
+      window.updateGlobalNotificationBadge();
+    }, 1000);
+  }
+});
+
+// Update badge when page becomes visible (user switches tabs)
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden && !window.updateNotificationBadge) {
+    window.updateGlobalNotificationBadge();
+  }
+});
 
 /**
  * Show Toast Notification

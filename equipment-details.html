@@ -39,11 +39,23 @@
 
         <a href="list-item.html" class="btn-list-item">List Item</a>
 
+        <div class="nav-icons">
+          <a href="notifications.html" class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span
+              class="notification-badge"
+              id="navNotificationBadge"
+              style="display: none"
+            ></span>
+          </a>
+        </div>
+
         <a href="profile.html">
           <img
-            src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=40"
+            src=""
             alt="User Avatar"
             class="user-avatar"
+            data-dynamic-avatar="true"
           />
         </a>
       </div>
@@ -63,7 +75,7 @@
             <span class="product-location">
               <i class="fas fa-map-marker-alt"></i> Loading...
             </span>
-            <span class="verified-badge-inline" style="display: none;">
+            <span class="verified-badge-inline" style="display: none">
               <i class="fas fa-check-circle"></i> Verified Gear
             </span>
           </div>
@@ -135,15 +147,15 @@
           <div class="info-section">
             <div class="host-info">
               <img
-                src="https://ui-avatars.com/api/?name=Kwesi&background=fe742c&color=fff&size=60"
-                alt="Kwesi"
+                src=""
+                alt="Host Avatar"
                 class="host-avatar"
+                data-dynamic-avatar="true"
+                data-size="60"
               />
               <div class="host-details">
                 <div class="host-name">Loading...</div>
-                <div class="host-meta">
-                  Loading...
-                </div>
+                <div class="host-meta">Loading...</div>
               </div>
               <button class="btn-secondary">More from this owner</button>
             </div>
@@ -152,19 +164,17 @@
           <!-- About This Gear -->
           <div class="info-section">
             <h2 class="section-heading">About this gear</h2>
-            <p class="section-text">
-              Loading equipment description...
-            </p>
+            <p class="section-text">Loading equipment description...</p>
 
             <!-- Kit list will be shown only if description includes kit info -->
-            <div id="kitListContainer" style="display: none;">
+            <div id="kitListContainer" style="display: none">
               <h3 class="subsection-heading">Kit includes:</h3>
               <ul class="kit-list"></ul>
             </div>
           </div>
 
           <!-- Technical Specifications (hidden by default, can be shown if needed) -->
-          <div class="info-section" id="specsSection" style="display: none;">
+          <div class="info-section" id="specsSection" style="display: none">
             <h2 class="section-heading">Technical Specifications</h2>
             <table class="specs-table"></table>
           </div>

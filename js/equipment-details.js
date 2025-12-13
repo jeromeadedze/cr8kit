@@ -12,7 +12,7 @@ let pricePerDay = 0; // Equipment price per day
 let equipmentData = null; // Full equipment data
 
 // Send booking request email to owner
-async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails) {
+async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails, bookingId = null) {
   try {
     // Get owner details
     const { data: owner } = await window.supabaseClient
@@ -43,7 +43,13 @@ async function sendBookingRequestEmail(equipmentId, ownerId, bookingDetails) {
           bookingDetails.endDate
         }. Total: GHS ${bookingDetails.totalAmount.toFixed(2)}`,
         related_equipment_id: equipmentId,
+        related_booking_id: bookingId,
       });
+      
+      // Update notification badge
+      if (window.updateGlobalNotificationBadge) {
+        window.updateGlobalNotificationBadge();
+      }
     } catch (notifError) {
       // If notifications table doesn't exist yet, just log
       console.log("Notifications table not available yet:", notifError);
@@ -904,7 +910,7 @@ function initBookingForm() {
           bookingNumber:
             createdBooking.booking_number ||
             "BK" + Date.now().toString().slice(-6),
-        });
+        }, createdBooking.booking_id);
       }
 
       if (window.showToast)
