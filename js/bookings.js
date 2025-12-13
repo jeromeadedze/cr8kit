@@ -12,14 +12,26 @@ async function loadBookings(filter = "all") {
 
   try {
     const userId = await window.getCurrentUserId();
+    const bookingList = document.querySelector(".booking-list");
+    const loadingSkeleton = document.getElementById("loadingSkeleton");
+
     if (!userId) {
       console.error("User not authenticated");
-      document.querySelector(".booking-list").innerHTML =
-        '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">Please sign in to view bookings.</p>';
+      if (bookingList) {
+        bookingList.innerHTML =
+          '<p style="text-align: center; padding: 2rem; color: var(--text-gray);">Please sign in to view bookings.</p>';
+      }
       return;
     }
 
-    // Get user role
+    // Show loading skeleton
+    if (bookingList && loadingSkeleton) {
+      bookingList.innerHTML = "";
+      bookingList.appendChild(loadingSkeleton);
+      loadingSkeleton.style.display = "flex";
+    }
+
+    // Get user role first (needed to build bookings query)
     const { data: user } = await window.supabaseClient
       .from("users")
       .select("role")
@@ -28,7 +40,7 @@ async function loadBookings(filter = "all") {
 
     const role = user?.role || "renter";
 
-    // Build query based on role
+    // Build filtered bookings query
     let query = window.supabaseClient
       .from("bookings")
       .select(
@@ -62,18 +74,38 @@ async function loadBookings(filter = "all") {
 
     // Apply status filter
     if (filter === "requests") {
-      // For owners, show pending requests
-      if (role === "owner") {
-        query = query.eq("status", "pending");
-      } else {
-        // For renters, requests tab doesn't apply
-        query = query.eq("status", "pending");
-      }
+      query = query.eq("status", "pending");
     } else if (filter !== "all") {
       query = query.eq("status", filter);
     }
 
-    const { data: bookings, error } = await query;
+    // If filter is not "all", we need to fetch all bookings for stats in parallel
+    // If filter is "all", we can use the same data for stats
+    let statsQuery = null;
+    if (filter !== "all") {
+      statsQuery = window.supabaseClient
+        .from("bookings")
+        .select("status, payment_status, total_amount")
+        .order("created_at", { ascending: false });
+
+      if (role === "owner") {
+        statsQuery = statsQuery.eq("owner_id", userId);
+      } else {
+        statsQuery = statsQuery.eq("renter_id", userId);
+      }
+    }
+
+    // Execute queries in parallel
+    const queries = [query];
+    if (statsQuery) {
+      queries.push(statsQuery);
+    }
+
+    const results = await Promise.all(queries);
+    const { data: bookings, error } = results[0];
+    const { data: allBookingsForStats, error: statsError } = statsQuery
+      ? results[1]
+      : { data: null, error: null };
 
     if (error) {
       throw error;
@@ -115,32 +147,26 @@ async function loadBookings(filter = "all") {
       },
     }));
 
-    renderBookings(allBookings);
-
-    // Calculate stats from ALL bookings (not filtered)
-    // We need to fetch all bookings for stats, regardless of filter
-    let statsQuery = window.supabaseClient
-      .from("bookings")
-      .select("status, payment_status, total_amount")
-      .order("created_at", { ascending: false });
-
-    if (role === "owner") {
-      statsQuery = statsQuery.eq("owner_id", userId);
-    } else {
-      statsQuery = statsQuery.eq("renter_id", userId);
+    // Hide loading skeleton
+    if (loadingSkeleton) {
+      loadingSkeleton.style.display = "none";
     }
 
-    const { data: allBookingsForStats, error: statsError } = await statsQuery;
+    renderBookings(allBookings);
 
-    if (!statsError && allBookingsForStats) {
+    // Calculate stats from fetched data
+    // If filter is "all", use the bookings we already fetched (they're all bookings)
+    // Otherwise, use the allBookingsForStats we fetched in parallel
+    const statsData = filter === "all" ? bookings : allBookingsForStats;
+
+    if (statsData && !statsError) {
       const stats = {
-        active_rentals: allBookingsForStats.filter(
+        active_rentals: statsData.filter(
           (b) => b.status === "active" || b.status === "approved"
         ).length,
-        pending_requests: allBookingsForStats.filter(
-          (b) => b.status === "pending"
-        ).length,
-        total_spent: allBookingsForStats
+        pending_requests: statsData.filter((b) => b.status === "pending")
+          .length,
+        total_spent: statsData
           .filter((b) => b.payment_status === "paid")
           .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0),
       };
@@ -161,8 +187,19 @@ async function loadBookings(filter = "all") {
     }
   } catch (error) {
     console.error("Error loading bookings:", error);
-    document.querySelector(".booking-list").innerHTML =
-      '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading bookings. Please try again.</p>';
+
+    // Hide loading skeleton on error
+    const loadingSkeleton = document.getElementById("loadingSkeleton");
+    const bookingList = document.querySelector(".booking-list");
+
+    if (loadingSkeleton) {
+      loadingSkeleton.style.display = "none";
+    }
+
+    if (bookingList) {
+      bookingList.innerHTML =
+        '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading bookings. Please try again.</p>';
+    }
   }
 }
 
@@ -617,7 +654,7 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
         } has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
         related_booking_id: booking.booking_id,
       });
-      
+
       // Update notification badge
       if (window.updateGlobalNotificationBadge) {
         window.updateGlobalNotificationBadge();
@@ -654,7 +691,7 @@ async function sendReturnNotificationEmail(bookingId) {
         } has been returned. Please confirm the return.`,
         related_booking_id: bookingId,
       });
-      
+
       // Update notification badge
       if (window.updateGlobalNotificationBadge) {
         window.updateGlobalNotificationBadge();
@@ -940,7 +977,11 @@ async function payBooking(bookingId) {
           user_id: booking.owner_id,
           type: "payment_received",
           title: "Payment Received",
-          message: `Payment of GHS ${parseFloat(booking.total_amount || 0).toFixed(2)} has been received for booking ${booking.equipment?.name || "equipment"}.`,
+          message: `Payment of GHS ${parseFloat(
+            booking.total_amount || 0
+          ).toFixed(2)} has been received for booking ${
+            booking.equipment?.name || "equipment"
+          }.`,
           related_booking_id: bookingId,
         });
 

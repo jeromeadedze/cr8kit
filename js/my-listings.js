@@ -22,24 +22,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   // Initialize summary cards with 0 values first (immediate feedback)
   updateSummaryCardsUI(0, 0, 0);
 
-  // Load listings from API (this will also update summary cards with real data)
-  await loadListings();
-
-  // Load pending requests
-  await loadPendingRequests();
+  // Load listings and pending requests in parallel
+  await Promise.all([loadListings(), loadPendingRequests()]);
 
   // Initialize listings page
   initListingsPage();
-
-  // Final safety check: ensure stats are updated (in case of any timing issues)
-  setTimeout(async () => {
-    await updateSummaryCards();
-  }, 500);
-
-  // Additional retry for stats after page is fully loaded
-  setTimeout(async () => {
-    await updateSummaryCards();
-  }, 1500);
 });
 
 // Load listings from Supabase
@@ -47,6 +34,7 @@ async function loadListings() {
   const container =
     document.querySelector(".booking-list") ||
     document.querySelector("#listingsGrid");
+  const loadingSkeleton = document.getElementById("loadingSkeleton");
 
   try {
     // Check if Supabase client is available
@@ -60,8 +48,12 @@ async function loadListings() {
       return;
     }
 
-    // Show loading state
-    if (container) {
+    // Show loading skeleton
+    if (container && loadingSkeleton) {
+      container.innerHTML = "";
+      container.appendChild(loadingSkeleton);
+      loadingSkeleton.style.display = "flex";
+    } else if (container) {
       container.innerHTML =
         '<p style="text-align: center; padding: 2rem; color: var(--text-gray);"><i class="fas fa-spinner fa-spin"></i> Loading listings...</p>';
     }
@@ -80,12 +72,30 @@ async function loadListings() {
 
     console.log("Loading listings for user:", userId);
 
-    // Verify user exists and get role
-    const { data: userData, error: userError } = await window.supabaseClient
-      .from("users")
-      .select("user_id, role, full_name, email")
-      .eq("user_id", userId)
-      .single();
+    // Parallelize all queries for better performance
+    const [userResult, listingsResult, bookingsResult] = await Promise.all([
+      // Get user data
+      window.supabaseClient
+        .from("users")
+        .select("user_id, role, full_name, email")
+        .eq("user_id", userId)
+        .single(),
+      // Get owner's equipment
+      window.supabaseClient
+        .from("equipment")
+        .select("*")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false }),
+      // Get all bookings for stats and rental status (fetch all needed data at once)
+      window.supabaseClient
+        .from("bookings")
+        .select("equipment_id, total_amount, payment_status, status")
+        .eq("owner_id", userId),
+    ]);
+
+    const { data: userData, error: userError } = userResult;
+    const { data: listings, error } = listingsResult;
+    const { data: allBookings, error: bookingsError } = bookingsResult;
 
     if (userError) {
       console.error("Error fetching user data:", userError);
@@ -95,14 +105,6 @@ async function loadListings() {
         console.warn("User is not an owner, but showing listings page anyway");
       }
     }
-
-    // Get owner's equipment
-    console.log("Querying equipment table for owner_id:", userId);
-    const { data: listings, error } = await window.supabaseClient
-      .from("equipment")
-      .select("*")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching equipment:", error);
@@ -127,7 +129,6 @@ async function loadListings() {
     }
 
     console.log("Query successful. Found listings:", listings?.length || 0);
-    console.log("Listings data:", listings);
 
     // Check if listings is null or undefined
     if (!listings) {
@@ -141,25 +142,19 @@ async function loadListings() {
       return;
     }
 
-    // If listings is an empty array, that's valid - user just has no listings
-    if (listings.length === 0) {
-      console.log("User has no listings - this is normal for new users");
-    }
-
-    // Get active bookings for owner's equipment to determine rental status
-    const { data: activeBookings, error: bookingsError } =
-      await window.supabaseClient
-        .from("bookings")
-        .select("equipment_id")
-        .eq("owner_id", userId)
-        .in("status", ["approved", "active", "pending"]);
-
     if (bookingsError) {
       console.warn("Error fetching bookings (non-critical):", bookingsError);
     }
 
+    // Process bookings data
+    const bookings = allBookings || [];
+
+    // Get active bookings for rental status
+    const activeBookings = bookings.filter((b) =>
+      ["approved", "active", "pending"].includes(b.status)
+    );
     const rentedEquipmentIds = new Set(
-      (activeBookings || []).map((b) => b.equipment_id)
+      activeBookings.map((b) => b.equipment_id)
     );
 
     // Mark equipment as rented if it has active bookings
@@ -169,15 +164,31 @@ async function loadListings() {
     }));
 
     console.log("Processed listings:", allListings.length);
-    console.log("All listings array:", allListings);
+
+    // Hide loading skeleton
+    if (loadingSkeleton) {
+      loadingSkeleton.style.display = "none";
+    }
 
     // Render listings
     renderListings(allListings);
 
-    // Update summary cards with fresh data
-    await updateSummaryCards();
+    // Calculate and update summary cards from already-fetched data (no additional queries)
+    const totalListings = listings.length;
+    const currentlyRented = rentedEquipmentIds.size;
+    const totalEarnings = bookings
+      .filter((b) => b.payment_status === "paid")
+      .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+
+    updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings);
   } catch (error) {
     console.error("Error loading listings:", error);
+
+    // Hide loading skeleton on error
+    if (loadingSkeleton) {
+      loadingSkeleton.style.display = "none";
+    }
+
     if (container) {
       container.innerHTML =
         '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading listings: ' +
@@ -381,81 +392,49 @@ function createListingCard(listing) {
   `;
 }
 
-// Update summary cards
+// Update summary cards (kept for backward compatibility, but now uses data from loadListings)
 async function updateSummaryCards() {
-  console.log("updateSummaryCards called");
-
+  // This function is now mainly for backward compatibility
+  // Stats are calculated directly in loadListings() to avoid redundant queries
   const userId = await window.getCurrentUserId();
   if (!userId) {
-    console.error("User not authenticated for stats");
-    // Set to 0 if not authenticated
     updateSummaryCardsUI(0, 0, 0);
     return;
   }
 
-  console.log("Calculating stats for user:", userId);
-
-  // Initialize with 0 values
-  let totalListings = 0;
-  let currentlyRented = 0;
-  let totalEarnings = 0;
-
+  // Only fetch if we don't have data already (fallback)
   try {
-    // Get all listings for owner
-    const { data: allOwnerListings, error: listingsError } =
-      await window.supabaseClient
+    const [listingsResult, bookingsResult] = await Promise.all([
+      window.supabaseClient
         .from("equipment")
-        .select("equipment_id, is_available")
-        .eq("owner_id", userId);
-
-    if (listingsError) {
-      console.error("Error fetching listings for stats:", listingsError);
-    } else {
-      totalListings = (allOwnerListings || []).length;
-      console.log("Total listings found:", totalListings);
-    }
-
-    // Get ALL bookings for owner's equipment (for stats)
-    const { data: allBookings, error: bookingsError } =
-      await window.supabaseClient
+        .select("equipment_id")
+        .eq("owner_id", userId),
+      window.supabaseClient
         .from("bookings")
         .select("equipment_id, total_amount, payment_status, status")
-        .eq("owner_id", userId);
+        .eq("owner_id", userId),
+    ]);
 
-    if (bookingsError) {
-      console.error("Error fetching bookings for stats:", bookingsError);
-    } else {
-      const bookings = allBookings || [];
-      console.log("Total bookings found:", bookings.length);
+    const { data: listings } = listingsResult;
+    const { data: bookings } = bookingsResult;
 
-      // Count unique equipment items that are currently rented (active or approved bookings)
-      const activeBookings = bookings.filter(
-        (b) => b.status === "approved" || b.status === "active"
-      );
-      const rentedEquipmentIds = new Set(
-        activeBookings.map((b) => b.equipment_id)
-      );
-      currentlyRented = rentedEquipmentIds.size;
-      console.log("Currently rented items:", currentlyRented);
+    const totalListings = (listings || []).length;
+    const activeBookings = (bookings || []).filter(
+      (b) => b.status === "approved" || b.status === "active"
+    );
+    const rentedEquipmentIds = new Set(
+      activeBookings.map((b) => b.equipment_id)
+    );
+    const currentlyRented = rentedEquipmentIds.size;
+    const totalEarnings = (bookings || [])
+      .filter((b) => b.payment_status === "paid")
+      .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
 
-      // Calculate total earnings from ALL paid bookings (not just active ones)
-      totalEarnings = bookings
-        .filter((b) => b.payment_status === "paid")
-        .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
-      console.log("Total earnings:", totalEarnings);
-    }
+    updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings);
   } catch (error) {
     console.error("Error fetching stats:", error);
-    // On error, values remain 0 (already initialized)
+    updateSummaryCardsUI(0, 0, 0);
   }
-
-  // Always update UI with calculated values (even if 0)
-  console.log("Final stats:", {
-    totalListings,
-    currentlyRented,
-    totalEarnings,
-  });
-  updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings);
 }
 
 // Helper function to update summary cards UI
@@ -538,31 +517,36 @@ function updateSummaryCardsUI(totalListings, currentlyRented, totalEarnings) {
 function initListingsPage() {
   // Initialize filters
   initFilters();
-  
+
   // Check URL parameters for tab and booking
   const urlParams = new URLSearchParams(window.location.search);
-  const tab = urlParams.get('tab');
-  const bookingId = urlParams.get('booking');
-  
+  const tab = urlParams.get("tab");
+  const bookingId = urlParams.get("booking");
+
   // If tab=requests is in URL, automatically switch to requests tab
-  if (tab === 'requests') {
+  if (tab === "requests") {
     // Wait a bit for requests to load, then switch to requests tab
     setTimeout(() => {
       const requestsBtn = document.querySelector('[data-filter="requests"]');
       if (requestsBtn) {
         requestsBtn.click();
-        
+
         // If a specific booking ID is provided, scroll to it after a short delay
         if (bookingId) {
           setTimeout(() => {
-            const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`);
+            const bookingCard = document.querySelector(
+              `[data-booking-id="${bookingId}"]`
+            );
             if (bookingCard) {
-              bookingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              bookingCard.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
               // Highlight the card briefly
-              bookingCard.style.transition = 'box-shadow 0.3s ease';
-              bookingCard.style.boxShadow = '0 0 0 3px rgba(254, 116, 44, 0.5)';
+              bookingCard.style.transition = "box-shadow 0.3s ease";
+              bookingCard.style.boxShadow = "0 0 0 3px rgba(254, 116, 44, 0.5)";
               setTimeout(() => {
-                bookingCard.style.boxShadow = '';
+                bookingCard.style.boxShadow = "";
               }, 2000);
             }
           }, 500);
@@ -570,11 +554,11 @@ function initListingsPage() {
       }
     }, 300);
   }
-  
+
   // Clean up URL parameters after processing (optional - keeps URL clean)
   if (tab || bookingId) {
     const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, '', cleanUrl);
+    window.history.replaceState({}, "", cleanUrl);
   }
 }
 
@@ -1084,7 +1068,7 @@ async function sendBookingApprovalEmail(booking, pickupLocation, pickupTime) {
           } has been approved. Pickup: ${pickupLocation} at ${pickupTime}`,
           related_booking_id: booking.booking_id,
         });
-        
+
         // Update notification badge
         if (window.updateGlobalNotificationBadge) {
           window.updateGlobalNotificationBadge();

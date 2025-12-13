@@ -40,6 +40,14 @@ async function loadEquipment() {
 
   isLoading = true;
   const grid = document.getElementById("equipmentGrid");
+  const loadingSkeleton = document.getElementById("loadingSkeleton");
+
+  // Show loading skeleton on first page load
+  if (currentPage === 1 && loadingSkeleton) {
+    loadingSkeleton.style.display = "grid";
+    grid.innerHTML = "";
+    grid.appendChild(loadingSkeleton);
+  }
 
   // Load user's favorites
   const userFavorites = await loadUserFavorites();
@@ -107,6 +115,12 @@ async function loadEquipment() {
     .then(({ data, error }) => {
       if (error) throw error;
 
+      // Hide loading skeleton
+      const loadingSkeleton = document.getElementById("loadingSkeleton");
+      if (loadingSkeleton) {
+        loadingSkeleton.style.display = "none";
+      }
+
       if (currentPage === 1) {
         grid.innerHTML = "";
       }
@@ -160,6 +174,13 @@ async function loadEquipment() {
     })
     .catch((error) => {
       console.error("Error loading equipment:", error);
+
+      // Hide loading skeleton on error
+      const loadingSkeleton = document.getElementById("loadingSkeleton");
+      if (loadingSkeleton) {
+        loadingSkeleton.style.display = "none";
+      }
+
       // Fallback to sample data ONLY if we are on page 1 and really failed significantly (e.g. offline)
       // Otherwise showing sample data mixed with real data is confusing.
       // Show empty state on error instead of sample data
