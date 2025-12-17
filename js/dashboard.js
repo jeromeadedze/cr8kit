@@ -1,6 +1,6 @@
 /**
  * Dashboard JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 // Dashboard initialization

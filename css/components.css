@@ -1,11 +1,8 @@
-/* ============================================
-   Cr8Kit - Shared Components
-   Navbar, Footer, Cards, and other reusable components
-   ============================================ */
 
-/* ============================================
+
+/* 
    Navigation Bar
-   ============================================ */
+*/
 
 .navbar {
   background: var(--card-white);
@@ -181,9 +178,9 @@
   text-decoration: none;
 }
 
-/* ============================================
+/* 
    Page Container & Layout
-   ============================================ */
+    */
 
 .page-container {
   max-width: 1200px;
@@ -221,9 +218,9 @@
   flex: 1;
 }
 
-/* ============================================
+/* 
    Section Headers
-   ============================================ */
+    */
 
 .section-header {
   display: flex;
@@ -262,9 +259,9 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-/* ============================================
+/* 
    Stats Cards
-   ============================================ */
+    */
 
 .stats-grid {
   display: grid;
@@ -311,9 +308,9 @@
   color: var(--text-dark);
 }
 
-/* ============================================
+/* 
    Tabs Navigation
-   ============================================ */
+   */
 
 .tabs-nav {
   display: flex;
@@ -349,9 +346,9 @@
   background: var(--primary-orange);
 }
 
-/* ============================================
+/* 
    Filter Buttons
-   ============================================ */
+    */
 
 .filter-btn {
   background: var(--card-white);
@@ -377,9 +374,9 @@
   border-color: var(--primary-orange);
 }
 
-/* ============================================
+/* 
    Page Footer
-   ============================================ */
+    */
 
 .page-footer {
   margin-top: var(--spacing-xl);
@@ -413,9 +410,9 @@
   color: var(--primary-orange);
 }
 
-/* ============================================
+/* 
    Responsive - Navbar
-   ============================================ */
+    */
 
 @media (max-width: 768px) {
   .navbar {

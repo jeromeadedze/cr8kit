@@ -56,15 +56,24 @@
           </a>
         </div>
 
-        <a href="profile.html">
+        <div class="profile-dropdown">
           <img
             src=""
             alt="User Avatar"
             class="user-avatar"
             data-dynamic-avatar="true"
           />
-        </a>
+          <div class="profile-dropdown-menu">
+            <a href="profile.html" class="dropdown-item">
+              <i class="fas fa-user"></i> View Profile
+            </a>
+            <a href="#" class="dropdown-item" onclick="window.handleSignOut(); return false;">
+              <i class="fas fa-sign-out-alt"></i> Sign Out
+            </a>
+          </div>
+        </div>
       </div>
+
     </nav>
 
     <div class="list-item-container">
@@ -250,15 +259,6 @@
               value="East Legon, Accra, Ghana"
               id="pickupLocation"
             />
-            <button class="location-icon-btn" type="button">
-              <i class="fas fa-crosshairs"></i>
-            </button>
-          </div>
-          <div class="map-preview">
-            <div class="map-placeholder-small">
-              <i class="fas fa-map-marker-alt"></i>
-              <p>Map view</p>
-            </div>
           </div>
         </div>
       </div>
@@ -285,10 +285,9 @@
 
       <!-- Action Buttons -->
       <div class="form-actions-footer">
-        <button type="button" class="btn-save-draft">Save Draft</button>
-        <button type="button" class="btn-secondary">Preview</button>
         <button type="button" class="btn-publish">Publish Listing</button>
       </div>
+
     </div>
 
     <!-- Preview Modal -->

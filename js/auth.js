@@ -1,11 +1,5 @@
-/**
- * Cr8Kit Authentication JavaScript
- * Handles form validation, password visibility toggle, and form submission
- */
 
-// ============================================
 // Utility Functions
-// ============================================
 
 /**
  * Show error message for a form field

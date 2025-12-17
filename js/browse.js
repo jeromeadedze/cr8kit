@@ -1,6 +1,6 @@
 /**
  * Browse Equipment JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 let currentPage = 1;
@@ -67,6 +67,7 @@ async function loadEquipment() {
   const maxPrice = document.getElementById("maxPriceSlider")?.value || 1200;
   const city = document.getElementById("locationFilter")?.value || "";
   const search = document.getElementById("searchInput")?.value || "";
+  const sortBy = document.getElementById("sortSelect")?.value || "recommended";
 
   // Build Supabase query with owner information
   let query = window.supabaseClient
@@ -85,22 +86,22 @@ async function loadEquipment() {
       is_available, 
       owner_id, 
       image_url,
+      created_at,
       owner:owner_id (
         user_id,
         full_name,
         email
       )
       `
-    )
-    .order("created_at", { ascending: false })
-    .range((currentPage - 1) * 12, currentPage * 12 - 1);
+    );
 
-  // Apply filters
+  // STEP 1: Apply filters FIRST
   // Only show available equipment
   query = query.eq("is_available", true);
 
   // Apply category filter (excluding favorites, which is handled separately)
   if (regularCategories.length > 0) {
+    // Use 'in' for exact matching of categories
     query = query.in("category", regularCategories);
   }
 
@@ -108,8 +109,31 @@ async function loadEquipment() {
   if (search) {
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
   }
-  if (minPrice) query = query.gte("price_per_day", minPrice);
-  if (maxPrice) query = query.lte("price_per_day", maxPrice);
+  if (minPrice) query = query.gte("price_per_day", parseInt(minPrice));
+  if (maxPrice) query = query.lte("price_per_day", parseInt(maxPrice));
+
+  // STEP 2: Apply sorting AFTER filters
+  switch (sortBy) {
+    case "price-low":
+      query = query.order("price_per_day", { ascending: true });
+      break;
+    case "price-high":
+      query = query.order("price_per_day", { ascending: false });
+      break;
+    case "rating":
+      query = query.order("rating", { ascending: false, nullsFirst: false });
+      break;
+    case "newest":
+      query = query.order("created_at", { ascending: false });
+      break;
+    default: // recommended - order by rating then created_at
+      query = query.order("rating", { ascending: false, nullsFirst: false });
+      break;
+  }
+  
+  // STEP 3: Apply pagination LAST
+  query = query.range((currentPage - 1) * 12, currentPage * 12 - 1);
+
 
   query
     .then(({ data, error }) => {

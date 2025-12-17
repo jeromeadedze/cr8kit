@@ -304,3 +304,60 @@ window.highlightActiveNav = function() {
         }
     });
 };
+
+/**
+ * Handle Sign Out - Available globally for dropdown menu
+ */
+window.handleSignOut = async function(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    // Check if showConfirm is available (from modal-utils.js)
+    let confirmed = true;
+    if (typeof window.showConfirm === 'function') {
+        confirmed = await window.showConfirm("Are you sure you want to sign out?", {
+            title: "Sign Out",
+            type: "question",
+            confirmText: "Sign Out",
+            cancelText: "Cancel"
+        });
+    } else {
+        confirmed = confirm("Are you sure you want to sign out?");
+    }
+    
+    if (!confirmed) return;
+    
+    try {
+        const { error } = await window.supabaseClient.auth.signOut();
+        
+        if (error) {
+            console.error("Sign out error:", error);
+            if (typeof window.showAlert === 'function') {
+                window.showAlert("Error signing out: " + error.message, { type: "error", title: "Error" });
+            } else {
+                alert("Error signing out: " + error.message);
+            }
+            return;
+        }
+        
+        // Clear stored data
+        localStorage.removeItem("cr8kit_profile");
+        localStorage.removeItem("cr8kit_user");
+        sessionStorage.clear();
+        
+        // Redirect to login
+        window.location.replace("index.html");
+    } catch (error) {
+        console.error("Sign out error:", error);
+        if (typeof window.showAlert === 'function') {
+            window.showAlert("Error signing out. Please try again.", { type: "error", title: "Error" });
+        } else {
+            alert("Error signing out. Please try again.");
+        }
+    }
+};
+
+// Alias for backwards compatibility
+window.signOut = window.handleSignOut;

@@ -1,6 +1,6 @@
 /**
  * Equipment Details Page JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 let currentCalendarDate = new Date(); // Track currently viewed month
@@ -349,6 +349,73 @@ async function loadEquipmentDetails() {
         mainImage.alt = equipment.name;
       }
     }
+
+    // Load additional images from equipment_images table
+    const imageGrid = document.querySelector(".image-grid");
+    if (imageGrid) {
+      // Always clear the placeholder images first
+      imageGrid.innerHTML = "";
+      
+      try {
+        console.log("Fetching images for equipment_id:", equipmentId);
+        
+        const { data: additionalImages, error: imgError } = await window.supabaseClient
+          .from("equipment_images")
+          .select("image_url, is_primary")
+          .eq("equipment_id", parseInt(equipmentId))
+          .order("is_primary", { ascending: false });
+        
+        console.log("equipment_images query result:", additionalImages, imgError);
+        
+        if (imgError) {
+          console.error("Error fetching images:", imgError);
+          imageGrid.style.display = "none";
+        } else if (additionalImages && additionalImages.length > 0) {
+          // We have images from the equipment_images table
+          const allImages = additionalImages.map(img => img.image_url).filter(url => url);
+          console.log("All image URLs:", allImages);
+          
+          if (allImages.length === 0) {
+            // No valid images - hide the grid
+            imageGrid.style.display = "none";
+          } else if (allImages.length === 1) {
+            // Only one image - hide the grid (it's already shown as main)
+            imageGrid.style.display = "none";
+          } else {
+            // Multiple images - populate the grid dynamically
+            imageGrid.style.display = ""; // Ensure grid is visible
+            
+            // Show up to 3 thumbnail images (skip the first/primary which is already shown as main)
+            const thumbnailImages = allImages.slice(1, 4);
+            thumbnailImages.forEach((imgUrl, index) => {
+              const thumbnail = document.createElement("div");
+              thumbnail.className = "image-thumbnail";
+              thumbnail.innerHTML = `<img src="${imgUrl}" alt="Photo ${index + 2}" onclick="updateMainImage('${imgUrl}')" style="cursor: pointer;">`;
+              imageGrid.appendChild(thumbnail);
+            });
+            
+            // If there are more than 4 images total, show "View all photos" button
+            if (allImages.length > 4) {
+              const showAllDiv = document.createElement("div");
+              showAllDiv.className = "image-thumbnail show-all";
+              showAllDiv.innerHTML = `
+                <img src="${allImages[4] || allImages[3]}" alt="More photos">
+                <button class="show-all-btn" onclick="showAllPhotos()">View all ${allImages.length} photos</button>
+              `;
+              imageGrid.appendChild(showAllDiv);
+            }
+          }
+        } else {
+          // No images in equipment_images table - hide the grid completely
+          console.log("No images found in equipment_images table");
+          imageGrid.style.display = "none";
+        }
+      } catch (imgError) {
+        console.warn("Could not load additional images:", imgError);
+        imageGrid.style.display = "none";
+      }
+    }
+
 
     // Update description
     const descriptionEl = document.querySelector(".section-text");
@@ -1218,3 +1285,24 @@ async function loadReviews() {
   }
 }
 
+// Update main image when clicking on thumbnail
+function updateMainImage(imageUrl) {
+  const mainImage = document.querySelector(".main-product-image");
+  if (mainImage && imageUrl) {
+    mainImage.src = imageUrl;
+  }
+}
+
+// Show all photos (placeholder for future modal implementation)
+function showAllPhotos() {
+  // For now, just show an alert. In the future, this could open a full-screen gallery
+  if (window.showAlert) {
+    showAlert("Photo gallery feature coming soon!", { type: "info", title: "Photo Gallery" });
+  } else {
+    alert("Photo gallery feature coming soon!");
+  }
+}
+
+// Make functions globally available
+window.updateMainImage = updateMainImage;
+window.showAllPhotos = showAllPhotos;

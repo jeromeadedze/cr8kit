@@ -1,6 +1,6 @@
 /**
  * List Item Page JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 let uploadedImages = {}; // Store uploaded image data by slot number
@@ -41,18 +41,17 @@ function initPhotoUploads() {
   // Cloudinary widget is initialized on button click
 }
 
-// Cloudinary Configuration
+// Cloudinary Configuration - Now supports multiple image selection
 const cloudinaryConfig = {
   cloudName: "dpfsqrccq",
   apiKey: "112636816111282",
   uploadPreset: "cr8kit_equipment", // We'll create this in Cloudinary
   sources: ["local", "camera"],
-  multiple: false,
-  maxFiles: 1,
+  multiple: true,  // Enable multiple selection
+  maxFiles: 5,     // Allow up to 5 images at once
   clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
   maxFileSize: 5000000, // 5MB
-  cropping: true,
-  croppingAspectRatio: 1.5, // 3:2 aspect ratio
+  cropping: false,  // Disable cropping for multi-select
   showAdvancedOptions: true,
   folder: "cr8kit/equipment",
   resourceType: "image",
@@ -67,13 +66,23 @@ const cloudinaryConfig = {
   ],
 };
 
+// Track queue for multi-upload
+let uploadQueue = [];
+
 // Open Cloudinary Upload Widget
 function openCloudinaryWidget(slotNumber) {
+  // Clear the queue when opening widget
+  uploadQueue = [];
+  
   const widget = cloudinary.createUploadWidget(
     cloudinaryConfig,
     (error, result) => {
       if (!error && result && result.event === "success") {
-        handleCloudinaryUpload(slotNumber, result.info);
+        // Queue the upload
+        uploadQueue.push(result.info);
+      } else if (result && result.event === "queues-end") {
+        // All uploads complete - process the queue
+        processUploadQueue(slotNumber);
       } else if (error) {
         console.error("Upload error:", error);
         showAlert("Failed to upload image. Please try again.", { type: "error", title: "Upload Failed" });
@@ -82,6 +91,33 @@ function openCloudinaryWidget(slotNumber) {
   );
 
   widget.open();
+}
+
+// Process multiple uploads and assign to slots
+function processUploadQueue(startingSlot) {
+  if (uploadQueue.length === 0) return;
+  
+  let currentSlot = startingSlot;
+  const maxSlots = 3; // We have 3 slots
+  
+  uploadQueue.forEach((info, index) => {
+    // Find the next available slot
+    while (currentSlot <= maxSlots && uploadedImages[currentSlot]) {
+      currentSlot++;
+    }
+    
+    if (currentSlot <= maxSlots) {
+      handleCloudinaryUpload(currentSlot, info);
+      currentSlot++;
+    }
+  });
+  
+  // Clear the queue
+  uploadQueue = [];
+  
+  if (uploadQueue.length > maxSlots) {
+    showAlert(`Only ${maxSlots} images can be uploaded. Extra images were ignored.`, { type: "info", title: "Upload Limit" });
+  }
 }
 
 // Handle Cloudinary upload result
@@ -108,6 +144,7 @@ function handleCloudinaryUpload(slotNumber, info) {
     ${coverButton}
   `;
 }
+
 
 // Get optimized image URL from Cloudinary
 function getOptimizedImageUrl(publicId, width, height) {

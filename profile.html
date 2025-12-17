@@ -52,14 +52,23 @@
           </a>
         </div>
 
-        <a href="profile.html">
+        <div class="profile-dropdown">
           <img
             src="https://ui-avatars.com/api/?name=User&background=fe742c&color=fff&size=40"
             alt="User Avatar"
             class="user-avatar"
           />
-        </a>
+          <div class="profile-dropdown-menu">
+            <a href="profile.html" class="dropdown-item">
+              <i class="fas fa-user"></i> View Profile
+            </a>
+            <a href="#" class="dropdown-item" onclick="window.handleSignOut(); return false;">
+              <i class="fas fa-sign-out-alt"></i> Sign Out
+            </a>
+          </div>
+        </div>
       </div>
+
     </nav>
 
     <div class="profile-layout">

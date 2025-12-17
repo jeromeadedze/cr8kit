@@ -1,6 +1,6 @@
 /**
  * My Listings Page JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 let allListings = [];
@@ -89,8 +89,19 @@ async function loadListings() {
       // Get all bookings for stats and rental status (fetch all needed data at once)
       window.supabaseClient
         .from("bookings")
-        .select("equipment_id, total_amount, payment_status, status")
+        .select(`
+          equipment_id, 
+          total_amount, 
+          payment_status, 
+          status,
+          renter_id,
+          renter:renter_id (
+            full_name,
+            email
+          )
+        `)
         .eq("owner_id", userId),
+
     ]);
 
     const { data: userData, error: userError } = userResult;
@@ -148,20 +159,65 @@ async function loadListings() {
 
     // Process bookings data
     const bookings = allBookings || [];
+    console.log("All bookings data:", bookings);
 
-    // Get active bookings for rental status
+    // Get active bookings for rental status (with renter info)
     const activeBookings = bookings.filter((b) =>
       ["approved", "active", "pending"].includes(b.status)
     );
-    const rentedEquipmentIds = new Set(
-      activeBookings.map((b) => b.equipment_id)
-    );
+    console.log("Active bookings:", activeBookings);
+    
+    // Create a map of equipment_id to renter info
+    const rentedEquipmentMap = {};
+    
+    // For each active booking, get renter name
+    for (const b of activeBookings) {
+      if (b.equipment_id) {
+        let renterName = null;
+        
+        // Try to get renter name from the joined data
+        if (b.renter && typeof b.renter === 'object') {
+          renterName = b.renter.full_name || b.renter.email;
+        }
+        
+        // If no renter name from join, fetch it separately
+        if (!renterName && b.renter_id) {
+          try {
+            const { data: renterData } = await window.supabaseClient
+              .from("users")
+              .select("full_name, email")
+              .eq("user_id", b.renter_id)
+              .single();
+            
+            if (renterData) {
+              renterName = renterData.full_name || renterData.email;
+            }
+          } catch (err) {
+            console.warn("Could not fetch renter info:", err);
+          }
+        }
+        
+        rentedEquipmentMap[b.equipment_id] = {
+          renter_id: b.renter_id,
+          renter_name: renterName || "A renter",
+          status: b.status
+        };
+        
+        console.log(`Equipment ${b.equipment_id} rented by: ${renterName}`);
+      }
+    }
 
-    // Mark equipment as rented if it has active bookings
+    // Mark equipment as rented if it has active bookings and include renter info
     allListings = (listings || []).map((listing) => ({
       ...listing,
-      is_rented: rentedEquipmentIds.has(listing.equipment_id),
+      is_rented: !!rentedEquipmentMap[listing.equipment_id],
+      renter_name: rentedEquipmentMap[listing.equipment_id]?.renter_name || null,
+      rental_status: rentedEquipmentMap[listing.equipment_id]?.status || null,
     }));
+    
+    console.log("Listings with renter info:", allListings.filter(l => l.is_rented));
+
+
 
     console.log("Processed listings:", allListings.length);
 
@@ -175,7 +231,8 @@ async function loadListings() {
 
     // Calculate and update summary cards from already-fetched data (no additional queries)
     const totalListings = listings.length;
-    const currentlyRented = rentedEquipmentIds.size;
+    const currentlyRented = Object.keys(rentedEquipmentMap).length;
+
     const totalEarnings = bookings
       .filter((b) => b.payment_status === "paid")
       .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
@@ -346,8 +403,10 @@ function createListingCard(listing) {
           <div class="booking-meta">
             <span><i class="fas fa-tag"></i> ${listingCategory}</span>
             <span><i class="fas fa-calendar"></i> Listed: ${listedDate}</span>
+            ${listing.is_rented && listing.renter_name ? `<span style="color: var(--primary-orange); font-weight: 500;"><i class="fas fa-user"></i> Rented by: ${listing.renter_name}</span>` : ''}
           </div>
         </div>
+
         <div class="booking-actions">
           <div class="booking-price">
             <div class="price-amount">
@@ -815,9 +874,10 @@ async function approveRequest(bookingId) {
         );
 
         showAlert(
-          "Booking approved! Pickup details have been sent to the renter's email.",
+          "Booking approved! Pickup details have been sent to the renter's account.",
           { type: "success", title: "Booking Approved" }
         );
+
 
         // Remove modal
         document.body.removeChild(modal);

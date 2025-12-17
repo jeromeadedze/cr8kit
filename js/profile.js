@@ -1,6 +1,6 @@
 /**
  * Profile Page JavaScript
- * Cr8Kit - Ghana Creative Rentals Platform
+ * 
  */
 
 // Make sign out function available globally immediately
