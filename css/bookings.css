@@ -1,0 +1,271 @@
+/* ============================================
+   Cr8Kit - Bookings Page Styles
+   My Bookings page specific styles
+   ============================================ */
+
+/* Page Header */
+.owner-page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.owner-page-subtitle {
+  color: var(--text-gray);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Summary Cards (Matched to My Listings) */
+.owner-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.owner-summary-card {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.owner-summary-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 238, 230, 1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-orange);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.owner-summary-content {
+  flex: 1;
+}
+
+.owner-summary-label {
+  font-size: 11px;
+  color: var(--text-gray);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.owner-summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Booking List */
+.booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Booking Card (Horizontal Layout) */
+.booking-card {
+  background: var(--card-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md); 
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  transition: all 0.3s ease;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.booking-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-color);
+}
+
+/* 1. Left Section: Image */
+.booking-card-left {
+  flex-shrink: 0;
+  width: 200px;
+  height: 150px;
+}
+
+.booking-image {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--bg-beige);
+  display: block;
+}
+
+/* 2. Center Section: Info */
+.booking-card-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.booking-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status Dot Styles */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--text-gray); /* Default */
+}
+
+/* 3. Right Section: Price & Actions */
+.booking-card-right {
+  flex-shrink: 0;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  text-align: right;
+  height: 150px;
+}
+
+.booking-price-display {
+    width: 100%;
+    text-align: right;
+}
+
+.price-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+.price-breakdown {
+    font-size: 13px;
+    color: var(--text-gray);
+}
+
+/* Action Buttons */
+.btn-list-item {
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    background: var(--primary-orange);
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.btn-list-item:hover {
+    background: #e6651f;
+}
+
+.btn-cancel-top {
+  background: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.btn-cancel-top:hover {
+  border-color: var(--error-red);
+  color: var(--error-red);
+  background: rgba(231, 76, 60, 0.05);
+}
+
+/* Filters */
+.listings-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.listings-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.listings-filters .filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-dark);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.listings-filters .filter-btn:hover {
+    background: var(--bg-beige);
+}
+
+.listings-filters .filter-btn.active {
+    background: var(--primary-orange);
+    color: white;
+    border-color: var(--primary-orange);
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+  .owner-summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .booking-card {
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+  }
+
+  .booking-card-left {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .booking-card-right {
+    width: 100%;
+    height: auto;
+    align-items: flex-start;
+    text-align: left;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  
+  .booking-price-display {
+      text-align: left;
+  }
+}

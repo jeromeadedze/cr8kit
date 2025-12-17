@@ -225,231 +225,126 @@ function renderBookings(bookings) {
 // Create booking card HTML
 function createBookingCard(booking) {
   const statusClass = booking.status.toLowerCase();
-  const statusText =
-    booking.status === "pending" && booking.role === "renter"
-      ? "Pending Approval"
-      : booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+  let statusText = booking.status === "pending" && booking.role === "renter" ? "Pending Approval" : booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+  if (booking.status === "active") statusText = "Active";
+  if (booking.status === "completed") statusText = "Completed";
+  
+  // Custom status text override for active rentals
+  if (booking.role === 'renter' && booking.status === 'active') {
+      statusText = 'Active';
+  }
+
   const role = booking.role || "renter";
   const otherUserName = booking.other_user?.name || "Unknown";
 
-  // Get equipment image - validate URL format
+  // Get equipment image
   let imageUrl = booking.equipment?.image_url || "";
   const equipmentName = booking.equipment?.name || "Equipment";
-
-  // Validate URL - must start with http:// or https://
-  if (!imageUrl || imageUrl.trim() === "") {
-    // No image URL provided, use placeholder
-    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(
-      equipmentName
-    )}`;
-  } else if (
-    !imageUrl.startsWith("http://") &&
-    !imageUrl.startsWith("https://") &&
-    !imageUrl.startsWith("//")
-  ) {
-    // If it's not a valid URL (might be a Cloudinary public_id or relative path), use placeholder
-    // In production, you might want to construct Cloudinary URL here
-    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(
-      equipmentName
-    )}`;
+  
+  if (!imageUrl || imageUrl.trim() === "" || (!imageUrl.startsWith("http") && !imageUrl.startsWith("//"))) {
+    imageUrl = `https://via.placeholder.com/200x150?text=${encodeURIComponent(equipmentName)}`;
   }
-
-  // Ensure imageUrl is properly encoded
   imageUrl = imageUrl.trim();
 
-  // Payment status display
+  // Color logic
+  let statusDotColor = 'var(--text-gray)';
+  if (booking.status === 'active') statusDotColor = 'var(--success-green)';
+  if (booking.status === 'pending') statusDotColor = 'var(--primary-orange)';
+  if (booking.status === 'completed') statusDotColor = 'var(--text-gray)';
+
+  // Payment Status HTML
   let paymentStatusHtml = "";
   if (booking.payment_status === "paid") {
-    paymentStatusHtml = '<div class="price-status paid">Paid</div>';
-  } else if (
-    booking.status === "approved" &&
-    booking.payment_status === "pending"
-  ) {
-    paymentStatusHtml =
-      '<div class="price-status pending">Payment Required</div>';
-  } else if (booking.status === "pending") {
-    paymentStatusHtml =
-      '<div class="price-status pending">Awaiting Confirmation</div>';
+    paymentStatusHtml = '<span style="color: var(--success-green); font-weight: 500; font-size: 10px; margin-top: 4px; display: block;">Paid</span>';
+  } else if (booking.status === "approved" && booking.payment_status === "pending") {
+    paymentStatusHtml = '<span style="color: var(--primary-orange); font-weight: 500; font-size: 10px; margin-top: 4px; display: block;">Payment Due</span>';
   }
 
-  // Determine cancel button visibility
-  let cancelButtonHtml = "";
-  const canCancel =
-    role === "renter" &&
-    (booking.status === "pending" ||
-      (booking.status === "approved" && booking.payment_status === "pending"));
-
-  if (canCancel) {
-    const cancelText =
-      booking.status === "pending" ? "Cancel Request" : "Cancel";
-    cancelButtonHtml = `<button class="btn-cancel-top" onclick="cancelBooking(${booking.id})">${cancelText}</button>`;
-  }
-
-  let actionButtons = "";
-  if (role === "owner") {
+  // Button Logic
+  let actionButton = "";
+  if (role === "renter") {
     if (booking.status === "pending") {
-      actionButtons = `
-        <div style="display: flex; gap: var(--spacing-xs);">
-          <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="approveBooking(${booking.id})">Approve</button>
-          <button class="btn-cancel" onclick="rejectBooking(${booking.id})">Reject</button>
-        </div>
-      `;
+       // Pending Request
+       actionButton = `<button class="btn-cancel-top" style="font-size: 12px; padding: 6px 16px;" onclick="cancelBooking(${booking.id})">Cancel Request</button>`;
+    } else if (booking.status === "approved" && booking.payment_status === "pending") {
+       // Approved, needs payment
+       actionButton = `<button class="btn-list-item" style="font-size: 12px; padding: 8px 16px; width: 100%;" onclick="payBooking(${booking.id})">Pay Now</button>`;
     } else if (booking.status === "active") {
-      // Check if renter has marked as returned
-      const returnStatus = booking.return_status || "not_returned";
-      if (returnStatus === "returned") {
-        // Owner needs to confirm return
-        actionButtons = `
-          <div style="display: flex; gap: var(--spacing-xs);">
-            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="confirmReturn(${booking.id})">Confirm Return</button>
-          </div>
-        `;
-      } else {
-        // Waiting for renter to return
-        actionButtons = `
-          <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
-            <i class="fas fa-clock"></i> Waiting for equipment return
-          </p>
-        `;
-      }
-    } else if (
-      booking.status === "approved" &&
-      booking.payment_status === "paid"
-    ) {
-      // Show pickup details if available
-      let pickupInfo = "";
-      if (booking.pickup_location || booking.pickup_time) {
-        pickupInfo = `
-          <div style="margin-top: var(--spacing-xs); padding: var(--spacing-xs); background: rgba(254, 116, 44, 0.05); border-radius: var(--radius-sm);">
-            <div style="font-size: 12px; font-weight: 600; color: var(--primary-orange); margin-bottom: 4px;">
-              <i class="fas fa-map-marker-alt"></i> Pickup Details
-            </div>
-            ${
-              booking.pickup_location
-                ? `<div style="font-size: 11px; color: var(--text-dark);">Location: ${booking.pickup_location}</div>`
-                : ""
-            }
-            ${
-              booking.pickup_time
-                ? `<div style="font-size: 11px; color: var(--text-dark);">Time: ${booking.pickup_time}</div>`
-                : ""
-            }
-          </div>
-        `;
-      }
-      actionButtons = pickupInfo;
+       // Active rental
+       actionButton = `<button class="btn-list-item" style="font-size: 12px; padding: 8px 16px; width: 100%;" onclick="markAsReturned(${booking.id})">Mark as Returned</button>`;
     }
   } else {
-    if (booking.status === "approved" && booking.payment_status === "pending") {
-      actionButtons = `
-        <div style="display: flex; gap: var(--spacing-xs);">
-          <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="payBooking(${booking.id})">Pay Now</button>
-        </div>
-      `;
-    } else if (booking.status === "pending") {
-      actionButtons = `
-        <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
-          <i class="fas fa-info-circle"></i> Free cancellation
-        </p>
-      `;
-    } else if (
-      booking.status === "active" &&
-      booking.payment_status === "paid"
-    ) {
-      // Renter can mark equipment as returned
-      const returnStatus = booking.return_status || "not_returned";
-      if (returnStatus === "not_returned") {
-        actionButtons = `
-          <div style="display: flex; gap: var(--spacing-xs);">
-            <button class="btn-list-item" style="padding: 8px 16px; font-size: 12px" onclick="markAsReturned(${booking.id})">Mark as Returned</button>
-          </div>
-        `;
-      } else if (returnStatus === "returned") {
-        actionButtons = `
-          <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">
-            <i class="fas fa-check-circle"></i> Returned - Awaiting owner confirmation
-          </p>
-        `;
-      } else if (returnStatus === "confirmed") {
-        actionButtons = `
-          <p style="font-size: 12px; color: var(--success-green); margin-top: 8px;">
-            <i class="fas fa-check-circle"></i> Return confirmed by owner
-          </p>
-        `;
-      }
-    }
+    // Owner Actions
+     if (booking.status === "pending") {
+        actionButton = `
+         <div style="display: flex; gap: 8px; width: 100%; justify-content: flex-end;">
+             <button class="btn-list-item" onclick="approveBooking(${booking.id})" style="font-size: 12px; padding: 6px 12px;">Approve</button>
+             <button class="btn-cancel-top" onclick="rejectBooking(${booking.id})" style="font-size: 12px; padding: 6px 12px;">Reject</button>
+         </div>`;
+     } else if (booking.return_status === "returned") {
+        actionButton = `<button class="btn-list-item" onclick="confirmReturn(${booking.id})" style="font-size: 12px; padding: 8px 16px;">Confirm Return</button>`;
+     }
+  }
+
+  // Completed State
+  if (booking.status === 'completed') {
+      // No button typically, or view receipt
   }
 
   return `
-    <div class="booking-card" data-status="${
-      booking.status
-    }" data-booking-id="${booking.id}">
-      <img src="${imageUrl}" alt="${
-    booking.equipment.name
-  }" class="booking-image" loading="lazy" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x150?text=${encodeURIComponent(
-    booking.equipment.name || "Equipment"
-  )}'" />
-      <div class="booking-content">
-        <div class="booking-info">
-          <div class="booking-header">
-            <h3 class="booking-title">${booking.equipment.name}</h3>
-            <div class="booking-id">Booking #${booking.booking_number}</div>
-          </div>
-          <div class="booking-status">
-            <span class="status-dot ${statusClass}"></span>
-            <span style="text-transform: uppercase; font-weight: 500">${statusText}</span>
-          </div>
-          <div class="booking-details">
-            <div class="booking-detail-item">
-              <i class="fas fa-calendar"></i>
-              <span>${formatDate(booking.dates.start)} - ${formatDate(
-    booking.dates.end
-  )}</span>
-            </div>
-            <div class="booking-detail-item">
-              <i class="fas fa-user"></i>
-              <span>${
-                role === "owner" ? "Renter" : "Owner"
-              }: ${otherUserName}</span>
-            </div>
-            ${
-              booking.pickup_location &&
-              (booking.status === "approved" || booking.status === "active")
-                ? `
-            <div class="booking-detail-item" style="margin-top: var(--spacing-xs); padding: var(--spacing-xs); background: rgba(254, 116, 44, 0.05); border-radius: var(--radius-sm);">
-              <div style="font-size: 12px; font-weight: 600; color: var(--primary-orange); margin-bottom: 4px;">
-                <i class="fas fa-map-marker-alt"></i> Pickup Details
-              </div>
-              <div style="font-size: 11px; color: var(--text-dark);">${
-                booking.pickup_location
-              }</div>
-              ${
-                booking.pickup_time
-                  ? `<div style="font-size: 11px; color: var(--text-dark); margin-top: 2px;">Time: ${booking.pickup_time}</div>`
-                  : ""
-              }
-            </div>
-            `
-                : ""
-            }
-          </div>
+    <div class="booking-card" data-status="${booking.status}" data-booking-id="${booking.id}">
+      <!-- Left: Image -->
+      <div class="booking-card-left">
+        <img src="${imageUrl}" class="booking-image" alt="${equipmentName}" />
+      </div>
+      
+      <!-- Center: Info -->
+      <div class="booking-card-center">
+        <h3 class="booking-title" style="margin-bottom: 8px;">${equipmentName}</h3>
+        
+        <div class="booking-status-row" style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span class="status-dot" style="background-color: ${statusDotColor};"></span>
+            <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-dark); letter-spacing: 0.5px;">${statusText}</span>
         </div>
-        <div class="booking-actions">
-          ${cancelButtonHtml}
-          <div class="booking-price">
-            <div class="price-amount">GHC ${booking.pricing.total_amount.toLocaleString(
-              "en-US",
-              {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }
-            )}</div>
-            <div class="price-breakdown">${booking.dates.total_days} ${
-    booking.dates.total_days === 1 ? "day" : "days"
-  } x GHC ${booking.pricing.price_per_day.toLocaleString()}/day</div>
-            ${paymentStatusHtml}
-          </div>
-          ${actionButtons}
+
+        <div class="booking-meta-row" style="margin-bottom: 6px; font-size: 12px; color: var(--text-gray); display: flex; align-items: center; gap: 8px;">
+             <i class="fas fa-calendar-alt" style="width: 14px; text-align: center;"></i>
+             <span>${formatDate(booking.dates.start)} - ${formatDate(booking.dates.end)}</span>
+        </div>
+
+        <div class="booking-meta-row" style="font-size: 12px; color: var(--text-gray); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-user" style="width: 14px; text-align: center;"></i>
+            <span>${role === "owner" ? "Renter" : "Owner"}: ${otherUserName}</span>
+        </div>
+        
+        ${booking.pickup_location ? `
+        <div class="booking-pickup-row" style="margin-top: 12px; font-size: 11px; padding: 8px 12px; background: rgba(254, 116, 44, 0.05); border-radius: 4px; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fas fa-map-marker-alt" style="color: var(--primary-orange);"></i> 
+            <span style="font-weight: 600; color: var(--primary-orange);">Pickup Details</span>
+            <span style="color: var(--text-dark); margin-left: 4px;">${booking.pickup_location}</span>
+            <span style="margin: 0 4px; color: var(--border-color);">|</span> 
+            <span style="color: var(--text-dark);">Time: ${booking.pickup_time || 'TBD'}</span>
+        </div>` : ''}
+      </div>
+
+      <!-- Right: Price & Actions -->
+      <div class="booking-card-right">
+        <div class="booking-id" style="font-size: 11px; color: var(--text-gray); margin-bottom: 4px;">Booking #${booking.booking_number}</div>
+        
+        <div class="booking-price-display">
+            <div class="price-amount" style="font-size: 18px; font-weight: 700; color: var(--text-dark);">GHC ${booking.pricing.total_amount.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            
+            <div class="price-breakdown" style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">
+                ${booking.dates.total_days} days x GHC ${booking.pricing.price_per_day.toLocaleString()}/day
+            </div>
+            
+            <div style="text-align: right;">
+                ${paymentStatusHtml}
+            </div>
+        </div>
+        
+        <div class="booking-action-buttons" style="margin-top: auto; width: 100%; display: flex; justify-content: flex-end;">
+             ${actionButton}
         </div>
       </div>
     </div>

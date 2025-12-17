@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Bookings - Cr8Kit</title>
-    <link rel="stylesheet" href="css/styles.css" />
-    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/bookings.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="js/supa.js"></script>
     <link
@@ -129,22 +130,7 @@
           >
             Pending
           </button>
-          <button
-            class="filter-btn"
-            data-filter="requests"
-            id="requestsTab"
-            onclick="filterBookings('requests'); return false;"
-            style="display: none"
-          >
-            Requests
-          </button>
-          <button
-            class="filter-btn"
-            data-filter="active"
-            onclick="filterBookings('active'); return false;"
-          >
-            Active
-          </button>
+
           <button
             class="filter-btn"
             data-filter="completed"
@@ -212,6 +198,7 @@
     </div>
 
     <script src="js/modal-utils.js"></script>
+    <script src="js/notifications.js"></script>
     <script src="js/bookings.js"></script>
   </body>
 </html>

@@ -8,25 +8,49 @@ let filteredNotifications = [];
 
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", async function () {
-  // Update user info (avatar) - call immediately and with retry
-  if (window.updateUserInfo) {
-    window.updateUserInfo();
-    // Retry after a short delay to ensure it runs
-    setTimeout(() => {
-      if (window.updateUserInfo) {
-        window.updateUserInfo();
-      }
-    }, 500);
-  }
-
-  await loadNotifications();
-  updateNotificationBadge();
-
-  // Mark all notifications as read when user visits the page
+  // Only run full notification loading on the notifications page
   if (window.location.pathname.includes("notifications.html")) {
+    // Update user info (avatar) - only on notifications page
+    if (window.updateUserInfo) {
+      window.updateUserInfo();
+    }
+    await loadNotifications();
+    updateNotificationBadge();
     markAllAsReadOnVisit();
+  } else {
+    // On other pages, just load notifications to update the badge
+    await loadNotificationsForBadge();
   }
 });
+
+/**
+ * Load notifications just for badge count (used on non-notification pages)
+ */
+async function loadNotificationsForBadge() {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      return;
+    }
+
+    const { data: notifications, error } = await window.supabaseClient
+      .from("notifications")
+      .select("notification_id, is_read")
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Error fetching notifications for badge:", error);
+      return;
+    }
+
+    allNotifications = notifications || [];
+    updateNotificationBadge();
+  } catch (error) {
+    console.error("Error in loadNotificationsForBadge:", error);
+  }
+}
+
 
 /**
  * Load notifications from Supabase
@@ -488,6 +512,9 @@ async function updateNotificationBadge() {
     console.error("Error updating notification badge:", error);
   }
 }
+
+// Expose globally
+window.updateGlobalNotificationBadge = updateNotificationBadge;
 
 /**
  * Show empty state
