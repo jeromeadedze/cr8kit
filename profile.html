@@ -347,6 +347,7 @@
       </main>
     </div>
 
+    <script src="js/modal-utils.js"></script>
     <script src="js/profile.js"></script>
 
     <!-- Backup inline script for sign out button -->
@@ -359,7 +360,7 @@
             btn.dataset.initialized = "true";
             console.log("Backup: Setting up sign out button");
 
-            btn.onclick = function (e) {
+            btn.onclick = async function (e) {
               console.log("Backup: Button clicked via inline script");
               e.preventDefault();
               e.stopPropagation();
@@ -372,7 +373,13 @@
                 );
 
                 // Fallback: direct sign out
-                if (confirm("Are you sure you want to sign out?")) {
+                const confirmed = await showConfirm("Are you sure you want to sign out?", {
+                  title: "Sign Out",
+                  type: "question",
+                  confirmText: "Sign Out",
+                  cancelText: "Cancel"
+                });
+                if (confirmed) {
                   if (window.supabaseClient) {
                     window.supabaseClient.auth
                       .signOut()
@@ -383,9 +390,10 @@
                       })
                       .catch(function (err) {
                         console.error("Sign out error:", err);
-                        alert(
+                        showAlert(
                           "Error signing out: " +
-                            (err.message || "Please try again.")
+                            (err.message || "Please try again."),
+                          { type: "error", title: "Error" }
                         );
                       });
                   } else {

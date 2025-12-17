@@ -10,7 +10,14 @@ window.handleSignOut = async function (event) {
     event.stopPropagation();
   }
 
-  if (!confirm("Are you sure you want to sign out?")) {
+  const confirmed = await showConfirm("Are you sure you want to sign out?", {
+    title: "Sign Out",
+    type: "question",
+    confirmText: "Sign Out",
+    cancelText: "Cancel"
+  });
+  
+  if (!confirmed) {
     return;
   }
 
@@ -57,7 +64,7 @@ window.handleSignOut = async function (event) {
       signOutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Sign Out';
     }
 
-    alert("Error signing out: " + (error.message || "Please try again."));
+    showAlert("Error signing out: " + (error.message || "Please try again."), { type: "error", title: "Error" });
   }
 };
 
@@ -279,14 +286,14 @@ async function savePersonalInfo() {
 
   // Validate inputs
   if (!firstName || !lastName || !email) {
-    alert("Please fill in all required fields");
+    showAlert("Please fill in all required fields", { type: "warning", title: "Missing Fields" });
     return;
   }
 
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to save your profile.");
+      showAlert("Please sign in to save your profile.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -333,10 +340,10 @@ async function savePersonalInfo() {
       window.updateUserInfo();
     }
 
-    alert("Personal information saved successfully!");
+    showAlert("Personal information saved successfully!", { type: "success", title: "Saved" });
   } catch (error) {
     console.error("Error saving profile:", error);
-    alert("Error: " + (error.message || "Failed to save profile"));
+    showAlert("Error: " + (error.message || "Failed to save profile"), { type: "error", title: "Error" });
   }
 }
 
@@ -346,19 +353,19 @@ async function updatePassword() {
   const confirmPassword = document.getElementById("confirmPassword").value;
 
   if (!newPassword || !confirmPassword) {
-    alert("Please enter both password fields");
+    showAlert("Please enter both password fields", { type: "warning", title: "Missing Fields" });
     return;
   }
 
   if (newPassword !== confirmPassword) {
-    alert("Passwords do not match");
+    showAlert("Passwords do not match", { type: "error", title: "Password Mismatch" });
     return;
   }
 
   // Validate password strength
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.valid) {
-    alert(passwordValidation.message);
+    showAlert(passwordValidation.message, { type: "warning", title: "Password Requirements" });
     return;
   }
 
@@ -372,14 +379,14 @@ async function updatePassword() {
       throw error;
     }
 
-    alert("Password updated successfully!");
+    showAlert("Password updated successfully!", { type: "success", title: "Password Updated" });
 
     // Clear password fields
     document.getElementById("newPassword").value = "";
     document.getElementById("confirmPassword").value = "";
   } catch (error) {
     console.error("Error updating password:", error);
-    alert("Error: " + (error.message || "Failed to update password"));
+    showAlert("Error: " + (error.message || "Failed to update password"), { type: "error", title: "Error" });
   }
 }
 
@@ -459,7 +466,7 @@ function initSignOutButton() {
       window.handleSignOut(event);
     } else {
       console.error("handleSignOut function not found!");
-      alert("Error: Sign out function not available. Please refresh the page.");
+      showAlert("Sign out function not available. Please refresh the page.", { type: "error", title: "Error" });
     }
   };
 

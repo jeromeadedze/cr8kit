@@ -626,12 +626,7 @@ function initSignUpForm() {
         // Store profile in localStorage
         localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
 
-        // Show success message
-        alert(
-          "Account created successfully! Welcome to Cr8Kit, " + fullName + "!"
-        );
-
-        // Redirect to browse page
+        // Redirect to browse page (no popup, smooth experience)
         window.location.href = "browse.html";
       } catch (error) {
         // Reset button state

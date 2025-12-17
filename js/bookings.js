@@ -511,18 +511,23 @@ window.filterBookings = function (status) {
 
 // Mark equipment as returned (renter)
 async function markAsReturned(bookingId) {
-  if (
-    !confirm(
-      "Have you returned the equipment to the owner? This will notify them to confirm the return."
-    )
-  ) {
+  const confirmed = await showConfirm(
+    "Have you returned the equipment to the owner? This will notify them to confirm the return.",
+    {
+      title: "Mark as Returned",
+      type: "question",
+      confirmText: "Yes, I've Returned It",
+      cancelText: "Cancel"
+    }
+  );
+  if (!confirmed) {
     return;
   }
 
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to mark equipment as returned.");
+      showAlert("Please sign in to mark equipment as returned.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -534,12 +539,12 @@ async function markAsReturned(bookingId) {
       .single();
 
     if (!booking || booking.renter_id !== userId) {
-      alert("You don't have permission to mark this booking as returned.");
+      showAlert("You don't have permission to mark this booking as returned.", { type: "error", title: "Access Denied" });
       return;
     }
 
     if (booking.status !== "active") {
-      alert("Only active bookings can be marked as returned.");
+      showAlert("Only active bookings can be marked as returned.", { type: "warning", title: "Invalid Status" });
       return;
     }
 
@@ -559,26 +564,33 @@ async function markAsReturned(bookingId) {
     // Send notification email to owner
     await sendReturnNotificationEmail(bookingId);
 
-    alert("Equipment marked as returned. Owner will be notified to confirm.");
+    showAlert("Equipment marked as returned. Owner will be notified to confirm.", { type: "success", title: "Marked as Returned" });
     loadBookings(currentFilter);
   } catch (error) {
     console.error("Error marking as returned:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
 // Confirm return (owner)
 async function confirmReturn(bookingId) {
-  if (
-    !confirm("Confirm that the equipment has been returned in good condition?")
-  ) {
+  const confirmed = await showConfirm(
+    "Confirm that the equipment has been returned in good condition?",
+    {
+      title: "Confirm Return",
+      type: "question",
+      confirmText: "Confirm Return",
+      cancelText: "Cancel"
+    }
+  );
+  if (!confirmed) {
     return;
   }
 
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to confirm return.");
+      showAlert("Please sign in to confirm return.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -590,12 +602,12 @@ async function confirmReturn(bookingId) {
       .single();
 
     if (!booking || booking.owner_id !== userId) {
-      alert("You don't have permission to confirm this return.");
+      showAlert("You don't have permission to confirm this return.", { type: "error", title: "Access Denied" });
       return;
     }
 
     if (booking.return_status !== "returned") {
-      alert("Equipment must be marked as returned by renter first.");
+      showAlert("Equipment must be marked as returned by renter first.", { type: "warning", title: "Pending Return" });
       return;
     }
 
@@ -613,11 +625,11 @@ async function confirmReturn(bookingId) {
       throw error;
     }
 
-    alert("Return confirmed! Booking marked as completed.");
+    showAlert("Return confirmed! Booking marked as completed.", { type: "success", title: "Return Confirmed" });
     loadBookings(currentFilter);
   } catch (error) {
     console.error("Error confirming return:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -698,7 +710,13 @@ window.confirmReturn = confirmReturn;
 
 // Complete booking (owner only)
 async function completeBooking(bookingId) {
-  if (!confirm("Mark this booking as completed?")) return;
+  const confirmed = await showConfirm("Mark this booking as completed?", {
+    title: "Complete Booking",
+    type: "question",
+    confirmText: "Complete",
+    cancelText: "Cancel"
+  });
+  if (!confirmed) return;
   updateBookingStatus(bookingId, "completed");
 }
 
@@ -713,7 +731,7 @@ async function approveBooking(bookingId) {
       .single();
 
     if (!booking) {
-      alert("Booking not found.");
+      showAlert("Booking not found.", { type: "error", title: "Not Found" });
       return;
     }
 
@@ -731,15 +749,20 @@ async function approveBooking(bookingId) {
     if (pickupTime === null) return; // User cancelled
 
     if (!pickupLocation.trim() || !pickupTime.trim()) {
-      alert("Pickup location and time are required.");
+      showAlert("Pickup location and time are required.", { type: "warning", title: "Missing Details" });
       return;
     }
 
-    if (
-      !confirm(
-        `Approve this booking request?\n\nPickup Location: ${pickupLocation}\nPickup Time: ${pickupTime}`
-      )
-    ) {
+    const approvalConfirmed = await showConfirm(
+      `Approve this booking request?\n\nPickup Location: ${pickupLocation}\nPickup Time: ${pickupTime}`,
+      {
+        title: "Approve Booking",
+        type: "question",
+        confirmText: "Approve",
+        cancelText: "Cancel"
+      }
+    );
+    if (!approvalConfirmed) {
       return;
     }
 
@@ -762,29 +785,43 @@ async function approveBooking(bookingId) {
     // Send email notification to renter (if email service is set up)
     await sendBookingApprovalEmail(booking, pickupLocation, pickupTime);
 
-    alert("Booking approved! Renter has been notified with pickup details.");
+    showAlert("Booking approved! Renter has been notified with pickup details.", { type: "success", title: "Booking Approved" });
     loadBookings(currentFilter);
   } catch (error) {
     console.error("Error approving booking:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
 // Reject booking (owner only)
-function rejectBooking(bookingId) {
+async function rejectBooking(bookingId) {
   const reason = prompt(
     "Please provide a reason for rejecting this booking (optional):"
   );
   if (reason === null) return; // User cancelled
 
-  if (!confirm("Reject this booking request?")) return;
+  const confirmed = await showConfirm("Reject this booking request?", {
+    title: "Reject Booking",
+    type: "warning",
+    confirmText: "Reject",
+    cancelText: "Cancel",
+    dangerous: true
+  });
+  if (!confirmed) return;
 
   updateBookingStatus(bookingId, "cancelled", reason);
 }
 
 // Cancel booking
-function cancelBooking(bookingId) {
-  if (!confirm("Are you sure you want to cancel this booking?")) return;
+async function cancelBooking(bookingId) {
+  const confirmed = await showConfirm("Are you sure you want to cancel this booking?", {
+    title: "Cancel Booking",
+    type: "warning",
+    confirmText: "Yes, Cancel",
+    cancelText: "No, Keep It",
+    dangerous: true
+  });
+  if (!confirmed) return;
 
   updateBookingStatus(bookingId, "cancelled");
 }
@@ -798,7 +835,7 @@ async function updateBookingStatus(
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to update bookings.");
+      showAlert("Please sign in to update bookings.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -810,7 +847,7 @@ async function updateBookingStatus(
       .single();
 
     if (!booking) {
-      alert("Booking not found.");
+      showAlert("Booking not found.", { type: "error", title: "Not Found" });
       return;
     }
 
@@ -828,20 +865,20 @@ async function updateBookingStatus(
     // Validate status transitions
     if (status === "approved" || status === "rejected") {
       if (!isOwner || userRole !== "owner") {
-        alert("Only the owner can approve or reject bookings.");
+        showAlert("Only the owner can approve or reject bookings.", { type: "error", title: "Access Denied" });
         return;
       }
       if (booking.status !== "pending") {
-        alert("Only pending bookings can be approved or rejected.");
+        showAlert("Only pending bookings can be approved or rejected.", { type: "warning", title: "Invalid Status" });
         return;
       }
     } else if (status === "cancelled") {
       if (!isOwner && !isRenter) {
-        alert("You don't have permission to cancel this booking.");
+        showAlert("You don't have permission to cancel this booking.", { type: "error", title: "Access Denied" });
         return;
       }
       if (booking.status === "completed" || booking.status === "cancelled") {
-        alert("This booking cannot be cancelled.");
+        showAlert("This booking cannot be cancelled.", { type: "warning", title: "Invalid Status" });
         return;
       }
     }
@@ -866,11 +903,11 @@ async function updateBookingStatus(
       throw error;
     }
 
-    alert("Booking status updated successfully");
+    showAlert("Booking status updated successfully", { type: "success", title: "Updated" });
     loadBookings(currentFilter); // Reload bookings
   } catch (error) {
     console.error("Error updating booking:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -880,7 +917,7 @@ async function payBooking(bookingId) {
     // Get booking details
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to make a payment.");
+      showAlert("Please sign in to make a payment.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -900,30 +937,34 @@ async function payBooking(bookingId) {
       .single();
 
     if (bookingError || !booking) {
-      alert("Booking not found or access denied.");
+      showAlert("Booking not found or access denied.", { type: "error", title: "Access Denied" });
       return;
     }
 
     if (booking.status !== "approved") {
-      alert("This booking must be approved before payment.");
+      showAlert("This booking must be approved before payment.", { type: "warning", title: "Not Approved" });
       return;
     }
 
     if (booking.payment_status === "paid") {
-      alert("This booking is already paid.");
+      showAlert("This booking is already paid.", { type: "info", title: "Already Paid" });
       return;
     }
 
     // Show demo payment confirmation
     const confirmMessage =
-      `DEMO PAYMENT MODE\n\n` +
       `Equipment: ${booking.equipment?.name || "Unknown"}\n` +
       `Amount: GHS ${parseFloat(booking.total_amount).toFixed(2)}\n` +
       `Booking: ${booking.booking_number}\n\n` +
-      `This is a demo payment. No actual money will be charged.\n\n` +
-      `Click OK to simulate payment.`;
+      `This is a demo payment. No actual money will be charged.`;
 
-    if (!confirm(confirmMessage)) {
+    const paymentConfirmed = await showConfirm(confirmMessage, {
+      title: "Demo Payment",
+      type: "info",
+      confirmText: "Pay Now",
+      cancelText: "Cancel"
+    });
+    if (!paymentConfirmed) {
       return;
     }
 
@@ -982,9 +1023,9 @@ async function payBooking(bookingId) {
 
     // Show success message
     if (window.showToast) {
-      window.showToast("Payment successful! Booking confirmed.", "success");
+      window.showToast("Payment successful! Booking confirmed.", { type: "success" });
     } else {
-      alert("Payment successful! Booking confirmed.");
+      showAlert("Payment successful! Booking confirmed.", { type: "success", title: "Payment Complete" });
     }
 
     // Reload bookings
@@ -992,9 +1033,9 @@ async function payBooking(bookingId) {
   } catch (error) {
     console.error("Payment error:", error);
     if (window.showToast) {
-      window.showToast("Payment failed: " + error.message, "error");
+      window.showToast("Payment failed: " + error.message, { type: "error" });
     } else {
-      alert("Payment failed: " + error.message);
+      showAlert("Payment failed: " + error.message, { type: "error", title: "Payment Failed" });
     }
   }
 }

@@ -76,7 +76,7 @@ function openCloudinaryWidget(slotNumber) {
         handleCloudinaryUpload(slotNumber, result.info);
       } else if (error) {
         console.error("Upload error:", error);
-        alert("Failed to upload image. Please try again.");
+        showAlert("Failed to upload image. Please try again.", { type: "error", title: "Upload Failed" });
       }
     }
   );
@@ -224,11 +224,11 @@ function saveDraft() {
         saveBtn.style.backgroundColor = "";
       }, 2000);
     } else {
-      alert("Draft saved successfully!");
+      showAlert("Draft saved successfully!", { type: "success", title: "Draft Saved" });
     }
   } catch (error) {
     console.error("Error saving draft:", error);
-    alert("Failed to save draft. Please try again.");
+    showAlert("Failed to save draft. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -249,11 +249,11 @@ function previewListing() {
       console.log("Preview modal displayed");
     } else {
       console.error("Preview modal not found!");
-      alert("Preview modal not found. Please check the page structure.");
+      showAlert("Preview modal not found. Please check the page structure.", { type: "error", title: "Error" });
     }
   } catch (error) {
     console.error("Error in previewListing:", error);
-    alert("Error showing preview: " + (error.message || "Unknown error"));
+    showAlert("Error showing preview: " + (error.message || "Unknown error"), { type: "error", title: "Preview Error" });
   }
 }
 
@@ -473,7 +473,7 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
         publishBtn.disabled = false;
         publishBtn.textContent = "Publish Listing";
       }
-      alert("Please sign in to publish listings.");
+      showAlert("Please sign in to publish listings.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -528,7 +528,7 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
           publishBtn.disabled = false;
           publishBtn.textContent = "Publish Listing";
         }
-        alert("You don't have permission to edit this listing.");
+        showAlert("You don't have permission to edit this listing.", { type: "error", title: "Access Denied" });
         return;
       }
 
@@ -591,7 +591,7 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
       publishBtn.textContent = "Publish Listing";
     }
 
-    alert("Listing " + (isEdit ? "updated" : "published") + " successfully!");
+    showAlert("Listing " + (isEdit ? "updated" : "published") + " successfully!", { type: "success", title: "Success" });
 
     // Clear draft after successful publish
     localStorage.removeItem("cr8kit_draft_listing");
@@ -604,7 +604,7 @@ async function publishListingToSupabase(formData, isEdit, editId, publishBtn) {
       publishBtn.textContent = "Publish Listing";
     }
     console.error("Publish error:", error);
-    alert("Error: " + (error.message || "Failed to publish listing"));
+    showAlert("Error: " + (error.message || "Failed to publish listing"), { type: "error", title: "Publish Error" });
   }
 }
 
@@ -613,7 +613,7 @@ async function loadExistingListing(equipmentId) {
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to edit listings.");
+      showAlert("Please sign in to edit listings.", { type: "warning", title: "Sign In Required" });
       window.location.href = "my-listings.html";
       return;
     }
@@ -626,14 +626,14 @@ async function loadExistingListing(equipmentId) {
       .single();
 
     if (error || !equipment) {
-      alert("Equipment not found or you don't have permission to edit it.");
+      showAlert("Equipment not found or you don't have permission to edit it.", { type: "error", title: "Not Found" });
       window.location.href = "my-listings.html";
       return;
     }
 
     // Verify ownership
     if (equipment.owner_id !== userId) {
-      alert("You don't have permission to edit this listing.");
+      showAlert("You don't have permission to edit this listing.", { type: "error", title: "Access Denied" });
       window.location.href = "my-listings.html";
       return;
     }
@@ -689,13 +689,12 @@ async function loadExistingListing(equipmentId) {
       "Edit Your Listing";
 
     // Update publish button text
-    const publishBtn = document.querySelector(".btn-publish");
     if (publishBtn) {
       publishBtn.textContent = "Update Listing";
     }
   } catch (error) {
     console.error("Error loading listing:", error);
-    alert("Error loading listing. Please try again.");
+    showAlert("Error loading listing. Please try again.", { type: "error", title: "Error" });
     window.location.href = "my-listings.html";
   }
 }
@@ -710,86 +709,94 @@ function loadDraft() {
       const draft = JSON.parse(draftData);
 
       // Ask user if they want to load the draft
-      const shouldLoad = confirm(
-        "You have a saved draft. Would you like to load it? (Click Cancel to start fresh)"
-      );
-
-      if (shouldLoad) {
-        // Restore form fields
-        if (draft.title) {
-          document.getElementById("listingTitle").value = draft.title;
+      showConfirm(
+        "You have a saved draft. Would you like to load it?",
+        {
+          title: "Load Draft?",
+          type: "question",
+          confirmText: "Yes, Load Draft",
+          cancelText: "Start Fresh"
         }
-        if (draft.category) {
-          document.getElementById("category").value = draft.category;
+      ).then((shouldLoad) => {
+        if (shouldLoad) {
+          restoreDraftData(draft);
+        } else {
+          // Clear draft if user doesn't want to load it
+          localStorage.removeItem(draftKey);
         }
-        if (draft.brand) {
-          document.getElementById("brand").value = draft.brand;
-        }
-        if (draft.model) {
-          document.getElementById("model").value = draft.model;
-        }
-        if (draft.description) {
-          document.getElementById("description").value = draft.description;
-        }
-        if (draft.dailyRate) {
-          document.getElementById("dailyRate").value = draft.dailyRate;
-        }
-        if (draft.replacementValue) {
-          document.getElementById("replacementValue").value =
-            draft.replacementValue;
-        }
-        if (draft.pickupLocation) {
-          document.getElementById("pickupLocation").value =
-            draft.pickupLocation;
-        }
-        if (draft.activeListing !== undefined) {
-          document.getElementById("activeListing").checked =
-            draft.activeListing;
-        }
-
-        // Restore images if they exist
-        if (draft.images && draft.images.length > 0) {
-          draft.images.forEach((img, index) => {
-            const slotNumber = index + 1;
-            if (slotNumber <= 3) {
-              uploadedImages[slotNumber] = {
-                url: img.url,
-                publicId: img.publicId,
-                thumbnailUrl: img.thumbnailUrl || img.url,
-              };
-
-              const slot = document.getElementById(`photoSlot${slotNumber}`);
-              if (slot) {
-                slot.classList.add("has-image");
-                const coverButton =
-                  slotNumber === 1
-                    ? '<button class="photo-cover-btn">COVER</button>'
-                    : "";
-                slot.innerHTML = `
-                  <img src="${uploadedImages[slotNumber].thumbnailUrl}" alt="Uploaded photo" class="uploaded-photo">
-                  <button class="photo-remove-btn" onclick="removePhoto(${slotNumber})">
-                    <i class="fas fa-times"></i>
-                  </button>
-                  ${coverButton}
-                `;
-              }
-            }
-          });
-        }
-      } else {
-        // Clear draft if user doesn't want to load it
-        localStorage.removeItem(draftKey);
-      }
+      });
     }
   } catch (error) {
     console.error("Error loading draft:", error);
   }
 }
 
+// Restore draft data to form
+function restoreDraftData(draft) {
+  // Restore form fields
+  if (draft.title) {
+    document.getElementById("listingTitle").value = draft.title;
+  }
+  if (draft.category) {
+    document.getElementById("category").value = draft.category;
+  }
+  if (draft.brand) {
+    document.getElementById("brand").value = draft.brand;
+  }
+  if (draft.model) {
+    document.getElementById("model").value = draft.model;
+  }
+  if (draft.description) {
+    document.getElementById("description").value = draft.description;
+  }
+  if (draft.dailyRate) {
+    document.getElementById("dailyRate").value = draft.dailyRate;
+  }
+  if (draft.replacementValue) {
+    document.getElementById("replacementValue").value = draft.replacementValue;
+  }
+  if (draft.pickupLocation) {
+    document.getElementById("pickupLocation").value = draft.pickupLocation;
+  }
+  if (draft.activeListing !== undefined) {
+    document.getElementById("activeListing").checked = draft.activeListing;
+  }
+
+  // Restore images if they exist
+  if (draft.images && draft.images.length > 0) {
+    draft.images.forEach((img, index) => {
+      const slotNumber = index + 1;
+      if (slotNumber <= 3) {
+        uploadedImages[slotNumber] = {
+          url: img.url,
+          publicId: img.publicId,
+          thumbnailUrl: img.thumbnailUrl || img.url,
+        };
+
+        const slot = document.getElementById(`photoSlot${slotNumber}`);
+        if (slot) {
+          slot.classList.add("has-image");
+          const coverButton =
+            slotNumber === 1
+              ? '<button class="photo-cover-btn">COVER</button>'
+              : "";
+          slot.innerHTML = `
+            <img src="${uploadedImages[slotNumber].thumbnailUrl}" alt="Uploaded photo" class="uploaded-photo">
+            <button class="photo-remove-btn" onclick="removePhoto(${slotNumber})">
+              <i class="fas fa-times"></i>
+            </button>
+            ${coverButton}
+          `;
+        }
+      }
+    });
+  }
+}
+
 // Verify Ghana Card
 function verifyGhanaCard() {
   // In real app, this would open verification modal or redirect
-  alert("Ghana Card verification process will open here.");
+  showAlert("Ghana Card verification process will open here.", { type: "info", title: "Coming Soon" });
 }
 
 // Collect form data
@@ -832,32 +839,32 @@ function validateForm() {
   const replacementValue = document.getElementById("replacementValue").value;
 
   if (!title) {
-    alert("Please enter a listing title");
+    showAlert("Please enter a listing title", { type: "warning", title: "Missing Title" });
     document.getElementById("listingTitle").focus();
     return false;
   }
 
   if (!brand) {
-    alert("Please enter a brand/manufacturer");
+    showAlert("Please enter a brand/manufacturer", { type: "warning", title: "Missing Brand" });
     document.getElementById("brand").focus();
     return false;
   }
 
   if (!dailyRate || parseFloat(dailyRate) <= 0) {
-    alert("Please enter a valid daily rate");
+    showAlert("Please enter a valid daily rate", { type: "warning", title: "Invalid Rate" });
     document.getElementById("dailyRate").focus();
     return false;
   }
 
   if (!replacementValue || parseFloat(replacementValue) <= 0) {
-    alert("Please enter a valid replacement value");
+    showAlert("Please enter a valid replacement value", { type: "warning", title: "Invalid Value" });
     document.getElementById("replacementValue").focus();
     return false;
   }
 
   // Check if at least one photo is uploaded
   if (Object.keys(uploadedImages).length === 0) {
-    alert("Please upload at least one photo");
+    showAlert("Please upload at least one photo", { type: "warning", title: "Photos Required" });
     return false;
   }
 

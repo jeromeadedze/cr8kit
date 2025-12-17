@@ -678,7 +678,7 @@ async function approveRequest(bookingId) {
   try {
     const request = pendingRequests.find((r) => r.booking_id === bookingId);
     if (!request) {
-      alert("Request not found.");
+      showAlert("Request not found.", { type: "error", title: "Not Found" });
       return;
     }
 
@@ -758,7 +758,7 @@ async function approveRequest(bookingId) {
       const pickupTime = document.getElementById("pickupTime").value.trim();
 
       if (!pickupLocation || !pickupTime) {
-        alert("Please fill in all required fields.");
+        showAlert("Please fill in all required fields.", { type: "warning", title: "Missing Fields" });
         return;
       }
 
@@ -814,8 +814,9 @@ async function approveRequest(bookingId) {
           pickupTime
         );
 
-        alert(
-          "Booking approved! Pickup details have been sent to the renter's email."
+        showAlert(
+          "Booking approved! Pickup details have been sent to the renter's email.",
+          { type: "success", title: "Booking Approved" }
         );
 
         // Remove modal
@@ -831,9 +832,10 @@ async function approveRequest(bookingId) {
       } catch (error) {
         console.error("Error approving request:", error);
         console.error("Error details:", error);
-        alert(
+        showAlert(
           "An error occurred. Please try again. Error: " +
-            (error.message || "Unknown error")
+            (error.message || "Unknown error"),
+          { type: "error", title: "Error" }
         );
         submitBtn.disabled = false;
         submitBtn.textContent = "Approve & Send";
@@ -848,7 +850,7 @@ async function approveRequest(bookingId) {
     });
   } catch (error) {
     console.error("Error in approveRequest:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -867,7 +869,14 @@ async function rejectRequest(bookingId) {
   );
   if (reason === null) return; // User cancelled
 
-  if (!confirm("Are you sure you want to reject this booking request?")) {
+  const confirmed = await showConfirm("Are you sure you want to reject this booking request?", {
+    title: "Reject Booking",
+    type: "warning",
+    confirmText: "Yes, Reject",
+    cancelText: "Cancel",
+    dangerous: true
+  });
+  if (!confirmed) {
     return;
   }
 
@@ -885,7 +894,7 @@ async function rejectRequest(bookingId) {
 
     if (error) throw error;
 
-    alert("Booking request rejected.");
+    showAlert("Booking request rejected.", { type: "info", title: "Request Rejected" });
 
     // Reload requests
     await loadPendingRequests();
@@ -896,7 +905,7 @@ async function rejectRequest(bookingId) {
     }
   } catch (error) {
     console.error("Error rejecting request:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -1156,7 +1165,7 @@ async function toggleListing(checkbox, event) {
     const userId = await window.getCurrentUserId();
     if (!userId) {
       checkbox.checked = !isAvailable;
-      alert("Please sign in to update listings.");
+      showAlert("Please sign in to update listings.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -1169,7 +1178,7 @@ async function toggleListing(checkbox, event) {
 
     if (!equipment || equipment.owner_id !== userId) {
       checkbox.checked = !isAvailable;
-      alert("You don't have permission to update this listing.");
+      showAlert("You don't have permission to update this listing.", { type: "error", title: "Access Denied" });
       return;
     }
 
@@ -1222,7 +1231,7 @@ async function toggleListing(checkbox, event) {
   } catch (error) {
     console.error("Error updating listing:", error);
     checkbox.checked = !isAvailable;
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 
@@ -1234,18 +1243,24 @@ function editListing(equipmentId) {
 
 // Delete listing
 async function deleteListing(equipmentId) {
-  if (
-    !confirm(
-      "Are you sure you want to delete this listing? This action cannot be undone."
-    )
-  ) {
+  const confirmed = await showConfirm(
+    "Are you sure you want to delete this listing? This action cannot be undone.",
+    {
+      title: "Delete Listing",
+      type: "warning",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+      dangerous: true
+    }
+  );
+  if (!confirmed) {
     return;
   }
 
   try {
     const userId = await window.getCurrentUserId();
     if (!userId) {
-      alert("Please sign in to delete listings.");
+      showAlert("Please sign in to delete listings.", { type: "warning", title: "Sign In Required" });
       return;
     }
 
@@ -1257,7 +1272,7 @@ async function deleteListing(equipmentId) {
       .single();
 
     if (!equipment || equipment.owner_id !== userId) {
-      alert("You don't have permission to delete this listing.");
+      showAlert("You don't have permission to delete this listing.", { type: "error", title: "Access Denied" });
       return;
     }
 
@@ -1271,11 +1286,11 @@ async function deleteListing(equipmentId) {
       throw error;
     }
 
-    alert("Listing deleted successfully");
+    showAlert("Listing deleted successfully", { type: "success", title: "Deleted" });
     loadListings(); // Reload listings
   } catch (error) {
     console.error("Error deleting listing:", error);
-    alert("An error occurred. Please try again.");
+    showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
 

@@ -527,7 +527,7 @@ async function handleViewBookingDetails(notificationId, bookingId) {
   markAsRead(notificationId);
 
   if (!bookingId || bookingId === "null" || bookingId === null) {
-    alert("Payment details not available.");
+    showAlert("Payment details not available.", { type: "warning", title: "Not Available" });
     return;
   }
 
@@ -553,7 +553,7 @@ async function handleViewBookingDetails(notificationId, bookingId) {
 
     if (error || !booking) {
       console.error("Error fetching booking:", error);
-      alert("Unable to load payment details.");
+      showAlert("Unable to load payment details.", { type: "error", title: "Error" });
       return;
     }
 
@@ -561,7 +561,7 @@ async function handleViewBookingDetails(notificationId, bookingId) {
     showPaymentDetailsModal(booking);
   } catch (error) {
     console.error("Error in handleViewBookingDetails:", error);
-    alert("Unable to load payment details.");
+    showAlert("Unable to load payment details.", { type: "error", title: "Error" });
   }
 }
 
@@ -895,7 +895,7 @@ function showPaymentDetailsModal(booking) {
  */
 async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
   if (!bookingId || bookingId === "null" || bookingId === null) {
-    alert("Booking ID not available.");
+    showAlert("Booking ID not available.", { type: "warning", title: "Not Available" });
     return;
   }
 
@@ -917,12 +917,12 @@ async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
 
     if (bookingError) {
       console.error("Error fetching booking:", bookingError);
-      alert("Unable to verify booking status.");
+      showAlert("Unable to verify booking status.", { type: "error", title: "Error" });
       return;
     }
 
     if (booking.return_status === "confirmed") {
-      alert("This return has already been approved.");
+      showAlert("This return has already been approved.", { type: "info", title: "Already Approved" });
       // Mark notification as read and reload
       markAsRead(notificationId);
       await loadNotifications();
@@ -932,11 +932,16 @@ async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
     console.error("Error checking booking status:", error);
   }
 
-  if (
-    !confirm(
-      "Approve that the equipment has been returned and is in good condition?"
-    )
-  ) {
+  const confirmed = await showConfirm(
+    "Approve that the equipment has been returned and is in good condition?",
+    {
+      title: "Confirm Return",
+      type: "question",
+      confirmText: "Approve Return",
+      cancelText: "Cancel"
+    }
+  );
+  if (!confirmed) {
     return;
   }
 
@@ -970,7 +975,7 @@ async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
         button.style.cursor = "pointer";
         button.style.opacity = "1";
       }
-      alert("Error approving return. Please try again.");
+      showAlert("Error approving return. Please try again.", { type: "error", title: "Error" });
       return;
     }
 
@@ -979,9 +984,9 @@ async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
 
     // Show success message
     if (window.showToast) {
-      window.showToast("Equipment return approved successfully!", "success");
+      window.showToast("Equipment return approved successfully!", { type: "success" });
     } else {
-      alert("Equipment return approved successfully!");
+      showAlert("Equipment return approved successfully!", { type: "success", title: "Approved" });
     }
 
     // Reload notifications to update the list
@@ -997,7 +1002,7 @@ async function handleConfirmReturn(notificationId, bookingId, buttonElement) {
       button.style.cursor = "pointer";
       button.style.opacity = "1";
     }
-    alert("Error approving return. Please try again.");
+    showAlert("Error approving return. Please try again.", { type: "error", title: "Error" });
   }
 }
 

@@ -362,9 +362,9 @@ async function toggleFavorite(id) {
     const userId = await window.getCurrentUserId();
     if (!userId) {
       if (window.showToast) {
-        window.showToast("Please sign in to save favorites", "error");
+        window.showToast("Please sign in to save favorites", { type: "warning" });
       } else {
-        alert("Please sign in to save favorites");
+        showAlert("Please sign in to save favorites", { type: "warning", title: "Sign In Required" });
       }
       return;
     }
@@ -416,9 +416,9 @@ async function toggleFavorite(id) {
   } catch (error) {
     console.error("Error toggling favorite:", error);
     if (window.showToast) {
-      window.showToast("Failed to update favorite. Please try again.", "error");
+      window.showToast("Failed to update favorite. Please try again.", { type: "error" });
     } else {
-      alert("Failed to update favorite. Please try again.");
+      showAlert("Failed to update favorite. Please try again.", { type: "error", title: "Error" });
     }
   }
 }
