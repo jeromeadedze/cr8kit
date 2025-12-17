@@ -269,10 +269,14 @@ function createBookingCard(booking) {
     } else if (booking.status === "approved" && booking.payment_status === "pending") {
        // Approved, needs payment
        actionButton = `<button class="btn-list-item" style="font-size: 12px; padding: 8px 16px; width: 100%;" onclick="payBooking(${booking.id})">Pay Now</button>`;
+    } else if (booking.status === "active" && booking.return_status === "returned") {
+       // Already marked as returned, waiting for owner confirmation
+       actionButton = `<button class="btn-list-item" style="font-size: 12px; padding: 8px 16px; width: 100%; background: var(--text-gray); cursor: not-allowed; opacity: 0.7;" disabled>Awaiting Confirmation</button>`;
     } else if (booking.status === "active") {
-       // Active rental
+       // Active rental - can mark as returned
        actionButton = `<button class="btn-list-item" style="font-size: 12px; padding: 8px 16px; width: 100%;" onclick="markAsReturned(${booking.id})">Mark as Returned</button>`;
     }
+
   } else {
     // Owner Actions
      if (booking.status === "pending") {

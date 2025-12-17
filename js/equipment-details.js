@@ -178,6 +178,7 @@ function initializePage() {
   }
 }
 
+
 // Load equipment details from Supabase (must be defined before initializePage calls it)
 async function loadEquipmentDetails() {
   if (!equipmentId) {
@@ -527,34 +528,16 @@ async function loadEquipmentDetails() {
         }
       });
 
-      if (!equipment.total_rentals || equipment.total_rentals === 0) {
-        // No reviews
-        if (reviewsContainer) {
-          reviewsContainer.innerHTML =
-            '<p style="color: var(--text-gray); padding: 1rem 0;">No reviews yet. Be the first to review this equipment!</p>';
-        }
-        const showAllBtn = reviewsSection.querySelector(".btn-secondary");
-        if (showAllBtn) {
-          showAllBtn.textContent = "No reviews yet";
-          showAllBtn.disabled = true;
-          showAllBtn.style.opacity = "0.5";
-          showAllBtn.style.cursor = "not-allowed";
-        }
-      } else {
-        // Has reviews
-        if (reviewsContainer) {
-          reviewsContainer.innerHTML =
-            '<p style="color: var(--text-gray); padding: 1rem 0;">Loading reviews...</p>';
-        }
-        const showAllBtn = reviewsSection.querySelector(".btn-secondary");
-        if (showAllBtn) {
-          showAllBtn.textContent = `Show all ${equipment.total_rentals} reviews`;
-          showAllBtn.disabled = false;
-          showAllBtn.style.opacity = "1";
-          showAllBtn.style.cursor = "pointer";
-        }
+      // Always load reviews from database
+      if (reviewsContainer) {
+        reviewsContainer.innerHTML =
+          '<p style="color: var(--text-gray); padding: 1rem 0;">Loading reviews...</p>';
       }
+      
+      // Load reviews from database - this will update the container
+      loadReviews();
     }
+
 
     // Hide kit list container if no kit info in description
     const kitListContainer = document.getElementById("kitListContainer");
@@ -1110,3 +1093,128 @@ function initBookingForm() {
     }
   });
 }
+
+// Load reviews from the ratings table
+async function loadReviews() {
+  console.log("loadReviews called with equipmentId:", equipmentId);
+  
+  if (!equipmentId) {
+    console.error("No equipment ID for loading reviews");
+    return;
+  }
+  
+  const reviewsContainer = document.getElementById("reviewsContainer");
+  const reviewsRating = document.querySelector(".reviews-rating");
+  const reviewsCount = document.querySelector(".reviews-count");
+  
+  if (!reviewsContainer) {
+    console.log("Reviews container not found");
+    return;
+  }
+  
+  try {
+    // Ensure equipmentId is an integer
+    const eqId = parseInt(equipmentId);
+    console.log("Fetching reviews for equipment ID:", eqId);
+    
+    // Fetch ratings for this equipment
+    const { data: ratings, error } = await window.supabaseClient
+      .from("ratings")
+      .select(`
+        *,
+        reviewer:reviewer_id (
+          full_name,
+          email
+        )
+      `)
+      .eq("equipment_id", eqId)
+      .order("created_at", { ascending: false });
+    
+    console.log("Reviews fetch result:", { ratings, error });
+    
+    if (error) {
+      console.error("Error fetching reviews:", error);
+      reviewsContainer.innerHTML = '<p style="color: var(--text-gray); padding: 1rem 0;">Could not load reviews.</p>';
+      return;
+    }
+    
+    if (!ratings || ratings.length === 0) {
+      console.log("No reviews found for this equipment");
+      reviewsContainer.innerHTML = '<p style="color: var(--text-gray); padding: 1rem 0;">No reviews yet. Be the first to review this equipment!</p>';
+      if (reviewsRating) reviewsRating.textContent = "-";
+      if (reviewsCount) reviewsCount.textContent = "(0 reviews)";
+      return;
+    }
+
+    
+    // Calculate average rating
+    const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+    
+    // Update rating display
+    if (reviewsRating) reviewsRating.textContent = avgRating.toFixed(2);
+    if (reviewsCount) reviewsCount.textContent = `(${ratings.length} review${ratings.length !== 1 ? 's' : ''})`;
+    
+    // Render reviews
+    reviewsContainer.innerHTML = ratings.map(review => {
+      const reviewerName = review.reviewer?.full_name || review.reviewer?.email || "Anonymous";
+      const reviewDate = new Date(review.created_at).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+      const initials = reviewerName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+      
+      // Generate star HTML
+      let starsHtml = "";
+      for (let i = 1; i <= 5; i++) {
+        if (i <= review.rating) {
+          starsHtml += '<i class="fas fa-star" style="color: #ffc107; font-size: 14px;"></i>';
+        } else {
+          starsHtml += '<i class="fas fa-star" style="color: #ddd; font-size: 14px;"></i>';
+        }
+      }
+      
+      return `
+        <div class="review-card" style="
+          padding: 20px;
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          margin-bottom: 16px;
+          background: white;
+        ">
+          <div class="review-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: var(--primary-orange);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 16px;
+              ">${initials}</div>
+              <div>
+                <div style="font-weight: 600; color: var(--text-dark); font-size: 15px;">${reviewerName}</div>
+                <div style="font-size: 12px; color: var(--text-gray);">${reviewDate}</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 2px;">${starsHtml}</div>
+          </div>
+          ${review.comment ? `
+            <p style="color: var(--text-gray); line-height: 1.6; margin: 0; font-size: 14px;">${review.comment}</p>
+          ` : `
+            <p style="color: var(--text-gray); line-height: 1.6; margin: 0; font-size: 14px; font-style: italic;">No comment provided</p>
+          `}
+        </div>
+      `;
+    }).join("");
+    
+  } catch (error) {
+    console.error("Error loading reviews:", error);
+    reviewsContainer.innerHTML = '<p style="color: var(--text-gray); padding: 1rem 0;">Could not load reviews.</p>';
+  }
+}
+
