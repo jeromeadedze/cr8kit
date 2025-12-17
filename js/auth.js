@@ -347,8 +347,15 @@ function initSignInForm() {
         // Only store profile if everything is valid
         localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
 
-        // Success - redirect to browse page
-        window.location.href = "browse.html";
+        // Check if user is admin - redirect to admin dashboard
+        const ADMIN_EMAIL = "admin@cr8kit.com";
+        if (profile.is_admin === true || email === ADMIN_EMAIL) {
+          window.location.href = "admin.html";
+        } else {
+          // Success - redirect to browse page
+          window.location.href = "browse.html";
+        }
+
       } catch (error) {
         console.error("Login error:", error);
         submitButton.classList.remove("loading");

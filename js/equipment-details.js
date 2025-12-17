@@ -1306,3 +1306,221 @@ function showAllPhotos() {
 // Make functions globally available
 window.updateMainImage = updateMainImage;
 window.showAllPhotos = showAllPhotos;
+
+// Show owner profile modal with their equipment, bio, and rating
+async function showOwnerProfile() {
+  if (!equipmentData || !equipmentData.owner_id) {
+    showAlert("Owner information not available", { type: "error", title: "Error" });
+    return;
+  }
+  
+  const ownerId = equipmentData.owner_id;
+  
+  try {
+    // Fetch owner details
+    const { data: owner, error: ownerError } = await window.supabaseClient
+      .from("users")
+      .select("*")
+      .eq("user_id", ownerId)
+      .single();
+    
+    if (ownerError || !owner) {
+      throw new Error("Could not load owner information");
+    }
+    
+    // Fetch owner's equipment
+    const { data: ownerEquipment, error: eqError } = await window.supabaseClient
+      .from("equipment")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .eq("is_available", true)
+      .order("created_at", { ascending: false });
+    
+    // Fetch owner's rating
+    const { data: ratings } = await window.supabaseClient
+      .from("ratings")
+      .select("rating")
+      .eq("reviewee_id", ownerId);
+    
+    // Calculate average rating
+    let avgRating = 0;
+    if (ratings && ratings.length > 0) {
+      const sum = ratings.reduce((acc, r) => acc + (r.rating || 0), 0);
+      avgRating = sum / ratings.length;
+    }
+    
+    // Get total completed rentals as owner
+    const { data: completedRentals } = await window.supabaseClient
+      .from("bookings")
+      .select("booking_id")
+      .eq("owner_id", ownerId)
+      .in("status", ["completed", "returned"]);
+    
+    const totalRentals = completedRentals?.length || 0;
+    
+    // Create modal HTML
+    const modal = document.createElement("div");
+    modal.className = "modal-overlay";
+    modal.id = "ownerProfileModal";
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 style="margin: 0; font-size: 20px;">Owner Profile</h2>
+          <button class="modal-close" onclick="closeOwnerProfileModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+
+          <!-- Owner Info -->
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(owner.full_name || owner.email)}&background=fe742c&color=fff&size=80" 
+                 alt="${owner.full_name}" 
+                 style="width: 80px; height: 80px; border-radius: 50%;">
+            <div style="flex: 1;">
+              <h3 style="margin: 0 0 4px 0; font-size: 20px; color: var(--text-dark);">${owner.full_name || "User"}</h3>
+              <div style="display: flex; align-items: center; gap: 12px; color: var(--text-gray); font-size: 14px; flex-wrap: wrap;">
+                <span><i class="fas fa-star" style="color: #f1c40f;"></i> ${avgRating > 0 ? avgRating.toFixed(1) : "New"}</span>
+                <span>(${totalRentals} rentals)</span>
+              </div>
+              <div style="margin-top: 8px;">
+                ${owner.is_verified 
+                  ? '<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(39, 174, 96, 0.1); color: #27ae60; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;"><i class="fas fa-check-circle"></i> Ghana Card Verified</span>'
+                  : '<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(243, 156, 18, 0.1); color: #f39c12; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;"><i class="fas fa-exclamation-circle"></i> Not Verified</span>'
+                }
+              </div>
+              <p style="margin: 8px 0 0 0; color: var(--text-gray); font-size: 13px;">
+                Member since ${new Date(owner.created_at).getFullYear()}
+              </p>
+            </div>
+          </div>
+
+          
+          ${owner.bio ? `
+          <!-- Bio -->
+          <div style="margin-bottom: 24px;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-dark);">About</h4>
+            <p style="margin: 0; color: var(--text-gray); line-height: 1.6;">${owner.bio}</p>
+          </div>
+          ` : ''}
+          
+          <!-- Owner's Equipment -->
+          <div>
+            <h4 style="margin: 0 0 16px 0; font-size: 14px; color: var(--text-dark);">
+              Equipment by ${owner.full_name?.split(' ')[0] || 'this owner'} (${ownerEquipment?.length || 0})
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
+              ${ownerEquipment && ownerEquipment.length > 0 ? ownerEquipment.map(eq => `
+                <div onclick="window.location.href='equipment-details.html?id=${eq.equipment_id}'" 
+                     style="cursor: pointer; border-radius: 8px; overflow: hidden; background: #f9f9f9; transition: transform 0.2s;"
+                     onmouseover="this.style.transform='translateY(-2px)'" 
+                     onmouseout="this.style.transform='translateY(0)'">
+                  <img src="${eq.image_url || 'https://via.placeholder.com/180x120?text=No+Image'}" 
+                       alt="${eq.name}"
+                       style="width: 100%; height: 100px; object-fit: cover;">
+                  <div style="padding: 10px;">
+                    <p style="margin: 0; font-weight: 600; font-size: 13px; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${eq.name}</p>
+                    <p style="margin: 4px 0 0 0; color: var(--primary-orange); font-weight: 700; font-size: 14px;">GHS ${eq.price_per_day?.toFixed(2) || '0.00'}/day</p>
+                  </div>
+                </div>
+              `).join('') : '<p style="color: var(--text-gray); grid-column: 1/-1;">No equipment listed yet.</p>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add modal styles if not present
+    if (!document.getElementById("ownerProfileModalStyles")) {
+      const styles = document.createElement("style");
+      styles.id = "ownerProfileModalStyles";
+      styles.textContent = `
+        #ownerProfileModal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          animation: fadeIn 0.2s;
+          padding: 20px;
+        }
+        #ownerProfileModal .modal-content {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          width: 100%;
+          max-width: 900px;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+        }
+        #ownerProfileModal .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--border-color);
+          position: sticky;
+          top: 0;
+          background: white;
+          border-radius: 12px 12px 0 0;
+          z-index: 10;
+        }
+        #ownerProfileModal .modal-body {
+          overflow-y: auto;
+          flex: 1;
+        }
+        #ownerProfileModal .modal-close {
+          background: none;
+          border: none;
+          font-size: 20px;
+          color: var(--text-gray);
+          cursor: pointer;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          transition: all 0.2s;
+        }
+        #ownerProfileModal .modal-close:hover {
+          background: #f0f0f0;
+          color: var(--text-dark);
+        }
+        @media (max-width: 768px) {
+          #ownerProfileModal .modal-content {
+            max-width: 100%;
+            max-height: 95vh;
+            margin: 10px;
+          }
+        }
+      `;
+      document.head.appendChild(styles);
+    }
+
+    
+  } catch (error) {
+    console.error("Error loading owner profile:", error);
+    showAlert("Error loading owner profile. Please try again.", { type: "error", title: "Error" });
+  }
+}
+
+// Close owner profile modal
+function closeOwnerProfileModal() {
+  const modal = document.getElementById("ownerProfileModal");
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// Make new functions globally available
+window.showOwnerProfile = showOwnerProfile;
+window.closeOwnerProfileModal = closeOwnerProfileModal;

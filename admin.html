@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Cr8Kit</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/admin.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <!-- Sidebar -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-header">
+          <div class="admin-logo">
+            <span class="logo-text">Cr8Kit</span>
+            <span class="admin-badge">Admin</span>
+          </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active" data-section="verifications">
+            <i class="fas fa-id-card"></i>
+            <span>Verifications</span>
+            <span class="nav-badge" id="pendingCount">0</span>
+          </a>
+          <a href="#" class="nav-item" data-section="users">
+            <i class="fas fa-users"></i>
+            <span>Users</span>
+          </a>
+
+        </nav>
+
+        
+        <div class="sidebar-footer">
+          <button class="btn-sign-out" onclick="adminSignOut()">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="admin-main">
+        <!-- Header -->
+        <header class="admin-header">
+          <div class="header-left">
+            <h1 class="page-title">Identity Verification Queue</h1>
+            <p class="page-subtitle">Review and verify user Ghana Card submissions</p>
+          </div>
+          <div class="header-right">
+            <div class="admin-profile">
+              <img src="https://ui-avatars.com/api/?name=Admin&background=fe742c&color=fff&size=40" 
+                   alt="Admin" class="admin-avatar">
+              <span class="admin-name">Admin</span>
+            </div>
+          </div>
+        </header>
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon pending">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="statPending">0</span>
+              <span class="stat-label">Pending Review</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon approved">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="statApproved">0</span>
+              <span class="stat-label">Approved</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon rejected">
+              <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="statRejected">0</span>
+              <span class="stat-label">Rejected</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon total">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="statTotal">0</span>
+              <span class="stat-label">Total Users</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Verifications Section -->
+        <div id="verificationsSection" class="admin-section">
+          <!-- Verification Requests Table -->
+          <div class="content-card">
+            <div class="card-header">
+              <h2 class="card-title">Pending Verification Requests</h2>
+              <button class="btn-refresh" onclick="loadVerificationRequests()">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Ghana Card ID</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="verificationsTableBody">
+                  <tr>
+                    <td colspan="5" class="loading-row">
+                      <i class="fas fa-spinner fa-spin"></i> Loading verification requests...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Users Section -->
+        <div id="usersSection" class="admin-section" style="display: none;">
+          <div class="content-card">
+            <div class="card-header">
+              <h2 class="card-title">All Users</h2>
+              <button class="btn-refresh" onclick="loadUsers()">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Verified</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr>
+                    <td colspan="5" class="loading-row">
+                      <i class="fas fa-spinner fa-spin"></i> Loading users...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+
+        
+      </main>
+    </div>
+
+    
+    <!-- Verification Modal -->
+    <div class="modal-overlay" id="verifyModal" style="display: none;">
+      <div class="modal-content verify-modal">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">Verify Identity</h2>
+            <p class="modal-subtitle" id="requestId">Request #REQ-0000</p>
+          </div>
+          <button class="modal-close" onclick="closeVerifyModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="verify-grid">
+            <!-- User Info Column -->
+            <div class="user-info-column">
+              <div class="user-header">
+                <img src="" alt="User" class="user-avatar" id="modalUserAvatar">
+                <div>
+                  <h3 class="user-name" id="modalUserName">Loading...</h3>
+                  <p class="user-role" id="modalUserRole">User</p>
+                </div>
+              </div>
+              
+              <div class="info-group">
+                <label>EMAIL ADDRESS</label>
+                <p id="modalUserEmail">-</p>
+              </div>
+              
+              <div class="info-group">
+                <label>PHONE NUMBER</label>
+                <p id="modalUserPhone">-</p>
+              </div>
+              
+              <div class="info-group">
+                <label>MEMBER SINCE</label>
+                <p id="modalMemberSince">-</p>
+              </div>
+              
+              <div class="info-group highlight">
+                <label>SUBMITTED ID NUMBER</label>
+                <p id="modalGhanaCardId" class="ghana-card-id">-</p>
+              </div>
+            </div>
+            
+            <!-- Documents Column -->
+            <div class="documents-column">
+              <h4>Submitted Documents</h4>
+              
+              <div class="document-item">
+                <div class="document-header">
+                  <span>Ghana Card Photo</span>
+                  <button class="btn-zoom" onclick="zoomImage()">
+                    <i class="fas fa-search-plus"></i> Zoom
+                  </button>
+                </div>
+                <div class="document-preview" id="cardImagePreview">
+                  <p class="no-image">No image submitted</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <p class="warning-text">
+            <i class="fas fa-info-circle"></i>
+            Action cannot be undone.
+          </p>
+          <div class="action-buttons">
+            <button class="btn btn-reject" onclick="rejectVerification()">
+              <i class="fas fa-times"></i> Reject
+            </button>
+            <button class="btn btn-approve" onclick="approveVerification()">
+              <i class="fas fa-check"></i> Approve
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/supa.js"></script>
+    <script src="js/modal-utils.js"></script>
+    <script src="js/admin.js"></script>
+  </body>
+</html>

@@ -4,6 +4,7 @@
  */
 
 let uploadedImages = {}; // Store uploaded image data by slot number
+let isUserVerified = false; // Track user verification status
 
 document.addEventListener("DOMContentLoaded", function () {
   // Update user info (navbar avatar) - with retry
@@ -15,6 +16,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }, 300);
   }
+
+  // Check user verification status
+  checkVerificationStatus();
 
   // Initialize photo upload handlers
   initPhotoUploads();
@@ -35,6 +39,86 @@ document.addEventListener("DOMContentLoaded", function () {
     loadDraft();
   }
 });
+
+// Check user verification status
+async function checkVerificationStatus() {
+  try {
+    const userId = await window.getCurrentUserId();
+    if (!userId) {
+      // Redirect to login
+      window.location.href = "index.html";
+      return;
+    }
+    
+    const { data: user, error } = await window.supabaseClient
+      .from("users")
+      .select("is_verified, ghana_card_id")
+      .eq("user_id", userId)
+      .single();
+    
+    if (error) {
+      console.error("Error checking verification:", error);
+      return;
+    }
+    
+    const verifySection = document.getElementById("verifySection");
+    const verifyBtn = document.getElementById("verifyGhanaBtn");
+    
+    if (user.is_verified) {
+      // User is verified - update the section to show verified status
+      isUserVerified = true;
+      if (verifySection) {
+        verifySection.innerHTML = `
+          <div class="verify-content verified">
+            <i class="fas fa-check-circle verify-icon" style="color: #27ae60;"></i>
+            <div class="verify-text">
+              <p style="color: #27ae60;">
+                <strong>Ghana Card Verified</strong> - You're verified and can list equipment.
+              </p>
+            </div>
+          </div>
+        `;
+        verifySection.style.background = "rgba(39, 174, 96, 0.1)";
+        verifySection.style.borderColor = "#27ae60";
+      }
+    } else if (user.ghana_card_id) {
+      // User has submitted but not yet verified
+      if (verifySection) {
+        verifySection.innerHTML = `
+          <div class="verify-content pending">
+            <i class="fas fa-clock verify-icon" style="color: #f39c12;"></i>
+            <div class="verify-text">
+              <p style="color: #f39c12;">
+                <strong>Verification Pending</strong> - Your Ghana Card verification is under review (24-48 hours).
+              </p>
+            </div>
+          </div>
+        `;
+        verifySection.style.background = "rgba(243, 156, 18, 0.1)";
+        verifySection.style.borderColor = "#f39c12";
+      }
+    }
+    // If neither verified nor submitted, keep the default "Verify Ghana Card" prompt
+    
+  } catch (error) {
+    console.error("Error checking verification status:", error);
+  }
+}
+
+// Redirect to profile page for verification
+function redirectToVerification() {
+  showAlert("Please go to your profile page to verify your Ghana Card.", { 
+    type: "info", 
+    title: "Verification Required" 
+  });
+  setTimeout(() => {
+    window.location.href = "profile.html";
+  }, 2000);
+}
+
+// Make function globally available
+window.redirectToVerification = redirectToVerification;
+
 
 // Initialize photo uploads
 function initPhotoUploads() {

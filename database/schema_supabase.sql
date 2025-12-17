@@ -13,11 +13,15 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(10) NOT NULL DEFAULT 'renter' CHECK (role IN ('renter', 'owner')),
     ghana_card_id VARCHAR(20) NULL,
+    ghana_card_image TEXT NULL,
     is_verified BOOLEAN DEFAULT FALSE,
+    is_admin BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
+    bio TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
