@@ -426,14 +426,31 @@ async function markAsReturned(bookingId) {
       return;
     }
 
-    // Verify this is the renter's booking
-    const { data: booking } = await window.supabaseClient
+    // Get full booking details for the rating modal
+    const { data: booking, error: fetchError } = await window.supabaseClient
       .from("bookings")
-      .select("renter_id, status")
+      .select(`
+        *,
+        equipment:equipment_id (
+          equipment_id,
+          name,
+          image_url
+        ),
+        owner:owner_id (
+          user_id,
+          full_name
+        )
+      `)
       .eq("booking_id", bookingId)
       .single();
 
-    if (!booking || booking.renter_id !== userId) {
+    if (fetchError || !booking) {
+      console.error("Error fetching booking:", fetchError);
+      showAlert("Could not load booking details.", { type: "error", title: "Error" });
+      return;
+    }
+
+    if (booking.renter_id !== userId) {
       showAlert("You don't have permission to mark this booking as returned.", { type: "error", title: "Access Denied" });
       return;
     }
@@ -460,12 +477,309 @@ async function markAsReturned(bookingId) {
     await sendReturnNotificationEmail(bookingId);
 
     showAlert("Equipment marked as returned. Owner will be notified to confirm.", { type: "success", title: "Marked as Returned" });
-    loadBookings(currentFilter);
+    
+    // Show rating modal
+    showRatingModal(booking, userId);
+    
   } catch (error) {
     console.error("Error marking as returned:", error);
     showAlert("An error occurred. Please try again.", { type: "error", title: "Error" });
   }
 }
+
+// Show rating modal for the booking
+function showRatingModal(booking, userId) {
+  const equipmentName = booking.equipment?.name || "Equipment";
+  const ownerName = booking.owner?.full_name || "Owner";
+  const equipmentImage = booking.equipment?.image_url || "https://via.placeholder.com/100x100?text=No+Image";
+  
+  // Create modal overlay
+  const modal = document.createElement("div");
+  modal.className = "rating-modal-overlay";
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+  `;
+  
+  modal.innerHTML = `
+    <div class="rating-modal" style="
+      background: white;
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+    ">
+      <style>
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .rating-star {
+          font-size: 32px;
+          color: #ddd;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .rating-star:hover,
+        .rating-star.selected {
+          color: #ffc107;
+          transform: scale(1.1);
+        }
+        .rating-star.hovered {
+          color: #ffc107;
+        }
+      </style>
+      
+      <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: var(--text-dark);">
+            Rate Your Experience
+          </h2>
+          <button class="close-rating-modal" style="
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-gray);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+          ">&times;</button>
+        </div>
+        <p style="margin: 8px 0 0 0; color: var(--text-gray); font-size: 14px;">
+          How was your rental experience?
+        </p>
+      </div>
+      
+      <div style="padding: 24px;">
+        <!-- Equipment Info -->
+        <div style="display: flex; gap: 16px; margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 12px;">
+          <img src="${equipmentImage}" alt="${equipmentName}" style="
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+          " />
+          <div>
+            <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: var(--text-dark);">${equipmentName}</h3>
+            <p style="margin: 0; font-size: 14px; color: var(--text-gray);">Rented from ${ownerName}</p>
+          </div>
+        </div>
+        
+        <!-- Star Rating -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <p style="margin: 0 0 16px 0; font-weight: 600; color: var(--text-dark);">Rate the equipment</p>
+          <div class="star-rating" style="display: flex; justify-content: center; gap: 8px;">
+            <i class="fas fa-star rating-star" data-rating="1"></i>
+            <i class="fas fa-star rating-star" data-rating="2"></i>
+            <i class="fas fa-star rating-star" data-rating="3"></i>
+            <i class="fas fa-star rating-star" data-rating="4"></i>
+            <i class="fas fa-star rating-star" data-rating="5"></i>
+          </div>
+          <p class="rating-text" style="margin: 12px 0 0 0; font-size: 14px; color: var(--text-gray);">
+            Click to rate
+          </p>
+        </div>
+        
+        <!-- Review Comment -->
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark); font-size: 14px;">
+            Write a review (optional)
+          </label>
+          <textarea id="reviewComment" placeholder="Share your experience with this equipment..." style="
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+            box-sizing: border-box;
+          "></textarea>
+        </div>
+        
+        <!-- Submit Button -->
+        <div style="display: flex; gap: 12px;">
+          <button class="skip-rating-btn" style="
+            flex: 1;
+            padding: 14px 24px;
+            border: 2px solid var(--border-color);
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+          ">Skip</button>
+          <button class="submit-rating-btn" style="
+            flex: 2;
+            padding: 14px 24px;
+            border: none;
+            background: var(--primary-orange);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.5;
+          " disabled>Submit Rating</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Star rating interaction
+  let selectedRating = 0;
+  const stars = modal.querySelectorAll(".rating-star");
+  const ratingText = modal.querySelector(".rating-text");
+  const submitBtn = modal.querySelector(".submit-rating-btn");
+  
+  const ratingLabels = {
+    1: "Poor",
+    2: "Fair", 
+    3: "Good",
+    4: "Very Good",
+    5: "Excellent"
+  };
+  
+  stars.forEach(star => {
+    star.addEventListener("mouseenter", function() {
+      const rating = parseInt(this.dataset.rating);
+      stars.forEach((s, i) => {
+        s.classList.toggle("hovered", i < rating);
+      });
+    });
+    
+    star.addEventListener("mouseleave", function() {
+      stars.forEach(s => s.classList.remove("hovered"));
+    });
+    
+    star.addEventListener("click", function() {
+      selectedRating = parseInt(this.dataset.rating);
+      stars.forEach((s, i) => {
+        s.classList.toggle("selected", i < selectedRating);
+      });
+      ratingText.textContent = ratingLabels[selectedRating];
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = "1";
+    });
+  });
+  
+  // Close modal
+  modal.querySelector(".close-rating-modal").addEventListener("click", () => {
+    modal.remove();
+    loadBookings(currentFilter);
+  });
+  
+  modal.querySelector(".skip-rating-btn").addEventListener("click", () => {
+    modal.remove();
+    loadBookings(currentFilter);
+  });
+  
+  // Submit rating
+  submitBtn.addEventListener("click", async () => {
+    if (selectedRating === 0) return;
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+    
+    const comment = modal.querySelector("#reviewComment").value.trim();
+    
+    try {
+      // Insert rating into database
+      const { error } = await window.supabaseClient
+        .from("ratings")
+        .insert({
+          booking_id: booking.booking_id,
+          reviewer_id: userId,
+          reviewee_id: booking.owner_id,
+          equipment_id: booking.equipment_id,
+          rating: selectedRating,
+          comment: comment || null
+        });
+      
+      if (error) {
+        console.error("Error submitting rating:", error);
+        showAlert("Failed to submit rating. Please try again.", { type: "error", title: "Error" });
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Rating";
+        return;
+      }
+      
+      // Update equipment average rating
+      await updateEquipmentRating(booking.equipment_id);
+      
+      modal.remove();
+      showAlert("Thank you for your rating!", { type: "success", title: "Rating Submitted" });
+      loadBookings(currentFilter);
+      
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      showAlert("Failed to submit rating. Please try again.", { type: "error", title: "Error" });
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Rating";
+    }
+  });
+  
+  // Close on overlay click
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.remove();
+      loadBookings(currentFilter);
+    }
+  });
+}
+
+// Update equipment average rating
+async function updateEquipmentRating(equipmentId) {
+  try {
+    // Get all ratings for this equipment
+    const { data: ratings, error } = await window.supabaseClient
+      .from("ratings")
+      .select("rating")
+      .eq("equipment_id", equipmentId);
+    
+    if (error || !ratings || ratings.length === 0) {
+      console.log("No ratings found for equipment:", equipmentId);
+      return;
+    }
+    
+    // Calculate average
+    const sum = ratings.reduce((acc, r) => acc + r.rating, 0);
+    const average = sum / ratings.length;
+    
+    // Update equipment
+    const { error: updateError } = await window.supabaseClient
+      .from("equipment")
+      .update({
+        rating: parseFloat(average.toFixed(2)),
+        total_rentals: ratings.length
+      })
+      .eq("equipment_id", equipmentId);
+    
+    if (updateError) {
+      console.error("Error updating equipment rating:", updateError);
+    }
+  } catch (error) {
+    console.error("Error in updateEquipmentRating:", error);
+  }
+}
+
 
 // Confirm return (owner)
 async function confirmReturn(bookingId) {
