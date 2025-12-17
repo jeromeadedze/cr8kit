@@ -9,14 +9,21 @@ let filteredNotifications = [];
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", async function () {
   // Only run full notification loading on the notifications page
-  if (window.location.pathname.includes("notifications.html")) {
+  if (window.location.pathname.includes("notifications.html") || window.location.pathname.endsWith("/notifications")) {
+    
+    // Immediately hide badge on this page
+    const badges = document.querySelectorAll("#navNotificationBadge");
+    badges.forEach(badge => badge.style.display = "none");
+
     // Update user info (avatar) - only on notifications page
     if (window.updateUserInfo) {
       window.updateUserInfo();
     }
     await loadNotifications();
-    updateNotificationBadge();
-    markAllAsReadOnVisit();
+    
+    // We do NOT mark all as read automatically anymore, so individual items stay highlighted.
+    // The badge is already forcibly hidden by the code above.
+    
   } else {
     // On other pages, just load notifications to update the badge
     await loadNotificationsForBadge();
@@ -439,6 +446,10 @@ async function markAllAsReadOnVisit() {
     allNotifications.forEach((n) => {
       n.is_read = true;
     });
+    
+    // Refresh the UI to remove red dots/accents
+    filteredNotifications = [...allNotifications];
+    renderNotifications();
 
     updateNotificationBadge();
   } catch (error) {

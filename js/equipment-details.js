@@ -551,6 +551,17 @@ async function loadEquipmentDetails() {
           message.innerHTML =
             '<i class="fas fa-info-circle" style="margin-right: 8px;"></i>This is your equipment. You cannot book it.';
           bookingCard.insertBefore(message, bookingBtn);
+          
+          // Add Delete Button if not already present
+          if (!bookingCard.querySelector('.btn-delete-listing')) {
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "btn-secondary btn-delete-listing";
+            deleteBtn.onclick = deleteEquipment;
+            deleteBtn.style.cssText = "background: #fff; color: #e74c3c; border: 1px solid #e74c3c; width: 100%; margin-top: 12px; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: 600;";
+            deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete Listing';
+            bookingCard.appendChild(deleteBtn);
+          }
+
         }
       } else {
         // User is not the owner - ensure button is visible and inputs are enabled
@@ -1514,6 +1525,71 @@ async function showOwnerProfile() {
 }
 
 // Close owner profile modal
+function closeOwnerProfileModal() {
+  const modal = document.getElementById("ownerProfileModal");
+  if (modal) {
+    modal.remove(); // Remove from DOM completely to avoid state issues
+  }
+}
+
+// Delete equipment function
+async function deleteEquipment() {
+  if (!equipmentId) return;
+  
+  const confirmed = await showConfirm(
+    "Are you sure you want to delete this listing? This action cannot be undone.",
+    { 
+      type: "danger", 
+      title: "Delete Listing", 
+      confirmText: "Yes, delete it", 
+      cancelText: "Cancel" 
+    }
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    // Show deleting state
+    const deleteBtn = document.querySelector('.btn-delete-listing');
+    if (deleteBtn) {
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    }
+    
+    // Check if user is owner one more time (security)
+    const userId = await window.getCurrentUserId();
+    
+    // Perform delete
+    const { error } = await window.supabaseClient
+      .from("equipment")
+      .delete()
+      .eq("equipment_id", equipmentId)
+      .eq("owner_id", userId); // Ensure ownership at query level
+      
+    if (error) throw error;
+    
+    showAlert("Listing deleted successfully. Redirecting...", { type: "success", title: "Deleted" });
+    
+    // Redirect to my listings
+    setTimeout(() => {
+      window.location.href = "profile.html#my-equipment";
+    }, 1500);
+    
+  } catch (error) {
+    console.error("Error deleting equipment:", error);
+    showAlert("Error deleting listing. Please try again.", { type: "error", title: "Error" });
+    
+    const deleteBtn = document.querySelector('.btn-delete-listing');
+    if (deleteBtn) {
+      deleteBtn.disabled = false;
+      deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete Listing';
+    }
+  }
+}
+
+// Make globally available
+window.deleteEquipment = deleteEquipment;
+window.closeOwnerProfileModal = closeOwnerProfileModal;
 function closeOwnerProfileModal() {
   const modal = document.getElementById("ownerProfileModal");
   if (modal) {

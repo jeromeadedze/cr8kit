@@ -187,18 +187,22 @@ async function loadBookings(filter = "all") {
     }
   } catch (error) {
     console.error("Error loading bookings:", error);
-
-    // Hide loading skeleton on error
-    const loadingSkeleton = document.getElementById("loadingSkeleton");
+    
+    // Attempt to show detailed error message in UI
     const bookingList = document.querySelector(".booking-list");
-
-    if (loadingSkeleton) {
-      loadingSkeleton.style.display = "none";
-    }
-
     if (bookingList) {
-      bookingList.innerHTML =
-        '<p style="text-align: center; padding: 2rem; color: var(--error-red);">Error loading bookings. Please try again.</p>';
+      bookingList.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--error-red);">
+          <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+          <p style="margin-bottom: 0.5rem;">Error loading bookings.</p>
+          <p style="font-size: 0.9rem; color: var(--text-gray); background: #fff5f5; padding: 8px; border-radius: 4px; display: inline-block;">
+            ${error.message || JSON.stringify(error)}
+          </p>
+          <p style="margin-top: 1rem;">
+            <button onclick="loadBookings('${currentFilter}')" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 14px;">Try Again</button>
+          </p>
+        </div>
+      `;
     }
   }
 }
