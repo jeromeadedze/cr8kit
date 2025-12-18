@@ -6,6 +6,10 @@
 
 **Link to Documents:** https://drive.google.com/drive/folders/1v-cZ9Ljhf8JWTAnT8FAi5dar6zkz6Ab9?usp=sharing
 
+**Link to Slides:** https://www.canva.com/design/DAG7zSzaqo0/N6gOmI1p7N7VUODAOtGKwA/view?utm_content=DAG7zSzaqo0&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h24cd628549
+
+
+
 
 ## Project Description
 **Cr8Kit** is a digital rental platform designed to connect independent photographers, filmmakers, and creatives in Accra with equipment owners. The platform facilitates a secure and efficient marketplace for renting and listing creative gear, fostering trust and accessibility within the Ghanaian creative community.
