@@ -2,7 +2,7 @@
 
 **Link to Live Website:** (https://cr8kit.vercel.app)
 
-**Demo Video:** https://youtu.be/VlLDJCENolw
+**Demo Video:** https://youtu.be/BUHCMXtES5I
 
 **Link to Documents:** https://drive.google.com/drive/folders/1v-cZ9Ljhf8JWTAnT8FAi5dar6zkz6Ab9?usp=sharing
 
@@ -57,7 +57,7 @@ Make equipment access **affordable, safe, and efficient** for Ghanaian creatives
 - **Row Level Security (RLS):** Data privacy ensured via database policies (users can only edit their own data).
 
 ### Admin Panel
-- **Platform Oversight:** Admin interface to manage users, verify equipment, and oversee platform activity.
+- **Platform Oversight:** Admin interface to manage, verify users, and oversee platform activity.
 
 ---
 
@@ -65,7 +65,9 @@ Make equipment access **affordable, safe, and efficient** for Ghanaian creatives
 - **Frontend:** HTML5, CSS3, Vanilla JavaScript (ES6+)
 - **Backend / Database:** Supabase (PostgreSQL)
 - **Authentication:** Supabase Auth
+- **Image Storage:** Cloudinary
 - **Hosting:** [Vercel]
+
 
 ## How to Run Locally
 
