@@ -2,6 +2,11 @@
 
 **Link to Live Website:** (https://cr8kit.vercel.app)
 
+**Demo Video:** https://youtu.be/VlLDJCENolw
+
+**Link to Documents:** https://drive.google.com/drive/folders/1v-cZ9Ljhf8JWTAnT8FAi5dar6zkz6Ab9?usp=sharing
+
+
 ## Project Description
 **Cr8Kit** is a digital rental platform designed to connect independent photographers, filmmakers, and creatives in Accra with equipment owners. The platform facilitates a secure and efficient marketplace for renting and listing creative gear, fostering trust and accessibility within the Ghanaian creative community.
 
