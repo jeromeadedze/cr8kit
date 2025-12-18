@@ -291,7 +291,12 @@ function closeVerifyModal() {
 
 // Approve verification
 async function approveVerification() {
-  if (!currentVerificationUserId) return;
+  if (!currentVerificationUserId) {
+    console.error("No user ID set for verification");
+    return;
+  }
+  
+  console.log("Approving verification for user ID:", currentVerificationUserId);
   
   const confirmed = await showConfirm(
     "Are you sure you want to approve this verification? The user will be marked as verified.",
@@ -302,18 +307,26 @@ async function approveVerification() {
   
   try {
     // Update user as verified
-    const { error } = await window.supabaseClient
+    console.log("Updating user to verified status...");
+    const { data, error } = await window.supabaseClient
       .from("users")
       .update({ 
         is_verified: true,
         updated_at: new Date().toISOString()
       })
-      .eq("user_id", currentVerificationUserId);
+      .eq("user_id", currentVerificationUserId)
+      .select(); // Add select to see what was updated
     
-    if (error) throw error;
+    if (error) {
+      console.error("Database update error:", error);
+      throw error;
+    }
+    
+    console.log("Update successful, data:", data);
     
     // Send notification to user
-    await window.supabaseClient
+    console.log("Sending notification to user...");
+    const { error: notifError } = await window.supabaseClient
       .from("notifications")
       .insert({
         user_id: currentVerificationUserId,
@@ -323,16 +336,22 @@ async function approveVerification() {
         is_read: false
       });
     
+    if (notifError) {
+      console.error("Notification error:", notifError);
+      // Don't fail the whole operation for notification error
+    }
+    
     closeVerifyModal();
     showAlert("User has been verified successfully!", { type: "success", title: "Approved" });
     
     // Refresh data
-    loadStats();
-    loadVerificationRequests();
+    console.log("Refreshing admin panel data...");
+    await loadStats();
+    await loadVerificationRequests();
     
   } catch (error) {
     console.error("Error approving verification:", error);
-    showAlert("Error approving verification. Please try again.", { type: "error", title: "Error" });
+    showAlert("Error approving verification: " + (error.message || "Unknown error"), { type: "error", title: "Error" });
   }
 }
 

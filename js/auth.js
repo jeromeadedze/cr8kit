@@ -126,9 +126,8 @@ function validateFullName(name) {
   return { valid: true, message: "" };
 }
 
-// ============================================
+
 // Password Visibility Toggle
-// ============================================
 
 function initPasswordToggle() {
   const passwordToggles = document.querySelectorAll(".password-toggle");
@@ -160,9 +159,7 @@ function initPasswordToggle() {
   });
 }
 
-// ============================================
 // Sign In Form Validation
-// ============================================
 
 function initSignInForm() {
   const signInForm = document.getElementById("signInForm");
@@ -652,9 +649,7 @@ function initSignUpForm() {
   });
 }
 
-// ============================================
 // Initialize on Page Load
-// ============================================
 
 document.addEventListener("DOMContentLoaded", function () {
   initPasswordToggle();

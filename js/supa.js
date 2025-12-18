@@ -51,7 +51,12 @@ window.getOrCreateUserProfile = async function (
   phoneNumber = "",
   role = "renter"
 ) {
-  if (!email) return null;
+  if (!email) {
+    console.error("getOrCreateUserProfile: No email provided");
+    return null;
+  }
+
+  console.log("getOrCreateUserProfile: Looking for profile with email:", email);
 
   // Try to find existing profile
   const { data: existing, error: findError } = await window.supabaseClient
@@ -63,14 +68,19 @@ window.getOrCreateUserProfile = async function (
 
   if (findError) {
     console.error("Profile fetch error:", findError);
+    console.error("Fetch error details:", JSON.stringify(findError, null, 2));
     return null;
   }
 
   if (existing) {
+    console.log("Existing profile found:", existing);
     return existing;
   }
 
   // Create profile if missing
+  console.log("Creating new profile for:", email);
+  console.log("Profile data:", { fullName, email, phoneNumber, role });
+  
   const { data: created, error: createError } = await window.supabaseClient
     .from("users")
     .insert({
@@ -86,9 +96,21 @@ window.getOrCreateUserProfile = async function (
 
   if (createError) {
     console.error("Profile create error:", createError);
+    console.error("Create error code:", createError.code);
+    console.error("Create error message:", createError.message);
+    console.error("Create error details:", createError.details);
+    console.error("Full error object:", JSON.stringify(createError, null, 2));
+    
+    // Check if it's an RLS policy error
+    if (createError.code === "42501" || createError.message?.includes("policy")) {
+      console.error("RLS POLICY ERROR: The database is blocking profile creation due to Row Level Security policies");
+      console.error("You need to update your RLS policies to allow INSERT for authenticated users");
+    }
+    
     return null;
   }
 
+  console.log("Profile created successfully:", created);
   return created;
 };
 

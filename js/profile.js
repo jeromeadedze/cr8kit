@@ -89,78 +89,62 @@ document.addEventListener("DOMContentLoaded", function () {
 // Load user profile data from Supabase
 async function loadUserProfile() {
   try {
-    // Get profile from localStorage first (faster)
-    let profile = null;
-    const storedProfile = localStorage.getItem("cr8kit_profile");
-    if (storedProfile) {
-      try {
-        profile = JSON.parse(storedProfile);
-        // Check if profile has required fields
-        if (!profile.full_name && !profile.email) {
-          profile = null; // Invalid profile, fetch fresh
-        }
-      } catch (e) {
-        console.error("Error parsing stored profile:", e);
-        profile = null;
-      }
+    // Always fetch user from auth to ensure we have latest data
+    const {
+      data: { user },
+      error: authError,
+    } = await window.supabaseClient.auth.getUser();
+
+    if (authError || !user) {
+      console.log("User not authenticated");
+      // Redirect to login if not authenticated
+      window.location.href = "index.html";
+      return;
     }
 
-    // If not in localStorage, fetch from Supabase
-    if (!profile) {
-      const {
-        data: { user },
-        error: authError,
-      } = await window.supabaseClient.auth.getUser();
+    // Always fetch fresh profile from database to ensure verification status is up to date
+    const { data: fetchedProfile, error: profileError } =
+      await window.supabaseClient
+        .from("users")
+        .select("*")
+        .eq("email", user.email)
+        .single();
 
-      if (authError || !user) {
-        console.log("User not authenticated");
-        // Redirect to login if not authenticated
-        window.location.href = "index.html";
+    if (profileError || !fetchedProfile) {
+      console.error("Error loading profile:", profileError);
+      // Try to create profile if it doesn't exist
+      if (profileError && profileError.code === "PGRST116") {
+        // Profile doesn't exist, create it
+        const newProfile = await window.getOrCreateUserProfile(
+          user.email,
+          user.user_metadata?.full_name || "",
+          user.user_metadata?.phone_number || ""
+        );
+        if (newProfile) {
+          localStorage.setItem("cr8kit_profile", JSON.stringify(newProfile));
+          // Update UI with new profile
+          updateProfileSidebar(newProfile);
+          updateProfileForm(newProfile);
+        }
+        return;
+      } else {
         return;
       }
-
-      const { data: fetchedProfile, error: profileError } =
-        await window.supabaseClient
-          .from("users")
-          .select("*")
-          .eq("email", user.email)
-          .single();
-
-      if (profileError || !fetchedProfile) {
-        console.error("Error loading profile:", profileError);
-        // Try to create profile if it doesn't exist
-        if (profileError && profileError.code === "PGRST116") {
-          // Profile doesn't exist, create it
-          const newProfile = await window.getOrCreateUserProfile(
-            user.email,
-            user.user_metadata?.full_name || "",
-            user.user_metadata?.phone_number || ""
-          );
-          if (newProfile) {
-            profile = newProfile;
-            localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
-          } else {
-            return;
-          }
-        } else {
-          return;
-        }
-      } else {
-        profile = fetchedProfile;
-        localStorage.setItem("cr8kit_profile", JSON.stringify(profile));
-      }
     }
 
+    // Update localStorage with fresh data
+    localStorage.setItem("cr8kit_profile", JSON.stringify(fetchedProfile));
+
     // Ensure we have a valid profile before updating UI
-    if (profile && (profile.full_name || profile.email)) {
-      console.log("Profile loaded successfully:", profile);
+    if (fetchedProfile && (fetchedProfile.full_name || fetchedProfile.email)) {
+      console.log("Profile loaded successfully:", fetchedProfile);
       // Update profile sidebar
-      updateProfileSidebar(profile);
+      updateProfileSidebar(fetchedProfile);
 
       // Update form fields
-      updateProfileForm(profile);
+      updateProfileForm(fetchedProfile);
     } else {
-      console.error("Invalid profile data:", profile);
+      console.error("Invalid profile data:", fetchedProfile);
       // Show error message to user
       const profileName = document.querySelector(".profile-name");
       if (profileName) {
@@ -209,7 +193,7 @@ async function updateProfileSidebar(profile) {
   await loadUserRating(profile.user_id);
   
   // Update verification status button
-  updateVerificationStatus(profile.is_verified);
+  updateVerificationStatus(profile);
 }
 
 // Load user rating from ratings table
@@ -265,16 +249,27 @@ async function loadUserRating(userId) {
 }
 
 // Update verification status
-function updateVerificationStatus(isVerified) {
+function updateVerificationStatus(profile) {
   const verifyBtn = document.querySelector(".btn-verified");
   if (verifyBtn) {
-    if (isVerified) {
+    // State 1: User is verified
+    if (profile.is_verified) {
       verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> GHANA CARD VERIFIED';
       verifyBtn.classList.add("verified");
       verifyBtn.style.background = "#27ae60";
       verifyBtn.style.cursor = "default";
       verifyBtn.onclick = null;
-    } else {
+    } 
+    // State 2: Ghana Card submitted but pending approval
+    else if (profile.ghana_card_id) {
+      verifyBtn.innerHTML = '<i class="fas fa-clock"></i> VERIFICATION PENDING';
+      verifyBtn.classList.remove("verified");
+      verifyBtn.style.background = "#f39c12";
+      verifyBtn.style.cursor = "default";
+      verifyBtn.onclick = null;
+    } 
+    // State 3: Not submitted yet
+    else {
       verifyBtn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFY GHANA CARD';
       verifyBtn.classList.remove("verified");
       verifyBtn.style.background = "var(--primary-orange)";
